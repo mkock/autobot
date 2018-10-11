@@ -1,0 +1,6 @@
+*.toml
+*.csv
+*.xml
+*.zip
+*.log
+/release/*

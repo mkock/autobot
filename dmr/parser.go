@@ -1,0 +1,47 @@
+package dmr
+
+import (
+	"encoding/xml"
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/OmniCar/autobot/autoservice"
+)
+
+// NewXMLParser creates a new XML parser.
+func NewXMLParser() *XMLParser {
+	return &XMLParser{}
+}
+
+// ParseExcerpt parses XML file using XML decoding.
+func (p *XMLParser) ParseExcerpt(id int, lines <-chan []string, parsed chan<- autoservice.Vehicle, done chan<- int) {
+	var proc, keep int // How many excerpts did we process and keep?
+	var stat vehicleStat
+	for excerpt := range lines {
+		if err := xml.Unmarshal([]byte(strings.Join(excerpt, "\n")), &stat); err != nil {
+			panic(err) // We _could_ skip it, but it's better to halt execution here.
+		}
+		if stat.Type == 1 {
+			regDate, err := time.Parse("2006-01-02", stat.Info.FirstRegDate[:10])
+			if err != nil {
+				fmt.Printf("Error: Unable to parse first registration date: %s\n", stat.Info.FirstRegDate)
+				continue
+			}
+			vehicle := autoservice.Vehicle{
+				MetaData:     autoservice.Meta{Source: stat.Info.Source, Ident: stat.Ident, LastUpdated: time.Now()},
+				RegNr:        stat.RegNo,
+				VIN:          stat.Info.VIN,
+				Brand:        stat.Info.Designation.BrandTypeName,
+				Model:        stat.Info.Designation.Model.Name,
+				FuelType:     stat.Info.Engine.Fuel.FuelType,
+				FirstRegDate: regDate,
+			}
+			parsed <- vehicle
+			keep++
+		}
+		proc++
+	}
+	fmt.Printf("XML-worker %d finished processing %d excerpts, kept %d\n", id, proc, keep)
+	done <- id
+}
