@@ -39,26 +39,30 @@ func main() {
 	if *inFile == "" {
 		fmt.Printf("Using FTP data file at %q\n", cnf.Ftp.Host)
 		prov := dataprovider.NewFtpProvider(cnf.Ftp)
-		if err := prov.Connect(); err != nil {
+		if err := prov.Open(*inFile); err != nil {
 			log.Fatalf("Autobot: %s", err)
 		}
-		fname, _ := prov.CheckForLatest(*inFile)
+		fname, _ := prov.CheckForLatest()
 		if fname == "" {
 			fmt.Println("No new stat files detected.")
 			return
 		}
 		fmt.Println("New stat file detected: " + fname)
-		fmt.Println("Downloading...")
-		if src, err = prov.Provide(fname); err != nil {
+		fmt.Println("Fetching...")
+		if src, err = prov.Provide(); err != nil {
 			log.Fatalf("Autobot: %s", err)
 		}
+		prov.Close()
 	} else {
 		fmt.Printf("Using local data file: %s\n", *inFile)
 		prov := dataprovider.NewFileProvider()
-		if src, err = prov.Provide(*inFile); err != nil {
+		if err := prov.Open(*inFile); err != nil {
+			log.Fatalf("Autobot: %s", err)
+		}
+		if src, err = prov.Provide(); err != nil {
 			log.Fatal(err)
 		}
-
+		prov.Close()
 	}
 
 	// Instantiate an XML parser.

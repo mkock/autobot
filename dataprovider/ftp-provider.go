@@ -25,6 +25,7 @@ type FtpConfig struct {
 
 // FtpProvider is a data provider that supports file retrieval via FTP.
 type FtpProvider struct {
+	fname  string
 	config FtpConfig
 	client *goftp.Client
 }
@@ -34,8 +35,9 @@ func NewFtpProvider(conf FtpConfig) *FtpProvider {
 	return &FtpProvider{config: conf}
 }
 
-// Connect establishes the FTP connection.
-func (prov *FtpProvider) Connect() error {
+// Open establishes the FTP connection.
+func (prov *FtpProvider) Open(fname string) error {
+	prov.fname = fname
 	dialConf := goftp.Config{
 		User:               prov.config.User,
 		Password:           prov.config.Password,
@@ -52,22 +54,22 @@ func (prov *FtpProvider) Connect() error {
 	return nil
 }
 
-// Disconnect closes the FTP connection.
-func (prov *FtpProvider) Disconnect() error {
+// Close closes the FTP connection.
+func (prov *FtpProvider) Close() error {
 	return prov.client.Close()
 }
 
 // CheckForLatest checks if there are any new files in the same format as the one given and returns the filename
-// of the latest one if possible. Otherwise, the original filename is returned.
-func (prov *FtpProvider) CheckForLatest(fname string) (string, error) {
+// of the latest one if possible. Otherwise, the original filename is assigned.
+func (prov *FtpProvider) CheckForLatest() (string, error) {
 	files, err := prov.client.ReadDir(prov.config.Dir)
 	if err != nil {
 		return "", err
 	}
 	if len(files) == 0 {
-		return "", fmt.Errorf("Autobot: no such file %s", fname)
+		return "", fmt.Errorf("Autobot: no such file %s", prov.fname)
 	}
-	newest := fname
+	newest := prov.fname
 	if newest == "" {
 		// Date/time is in the past so comparisons will always benefit actual files.
 		newest = fmt.Sprintf("%s20000101-000000.zip", prov.config.FilePrefix)
@@ -77,34 +79,26 @@ func (prov *FtpProvider) CheckForLatest(fname string) (string, error) {
 			newest = file.Name()
 		}
 	}
+	prov.fname = newest
 	return newest, nil
 }
 
 // Provide make an FTP file available to autobot by downloading it.
-func (prov *FtpProvider) Provide(fname string) (rc io.ReadCloser, err error) {
-	// destDir := "/tmp"
-	srcPath := filepath.Join(prov.config.Dir, fname)
-	// destPath := filepath.Join(destDir, fname)
+func (prov *FtpProvider) Provide() (io.ReadCloser, error) {
+	srcPath := filepath.Join(prov.config.Dir, prov.fname)
 	_, statErr := prov.client.Stat(srcPath)
 	if statErr != nil {
 		return nil, statErr
 	}
-	// dest, createErr := os.Create(destPath)
-	// if createErr != nil {
-	// 	return "", createErr
-	// }
-	// defer func() {
-	// 	if err := file.Close(); err != nil {
-	// 		panic(err)
-	// 	}
-	// }()
 	r, w := io.Pipe()
 	go func() {
-		defer w.Close()
 		if err := prov.client.Retrieve(srcPath, w); err != nil {
 			log.Fatal(err)
 		}
 	}()
+	if isZipped(prov.fname) {
+		return unzip(r)
+	}
 	return r, nil
 }
 

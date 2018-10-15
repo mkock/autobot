@@ -2,6 +2,7 @@ package autoservice
 
 import (
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -28,7 +29,15 @@ type Vehicle struct {
 
 // String returns a stringified representation of the Vehicle data structure.
 func (v Vehicle) String() string {
-	return fmt.Sprintf("%#v", v)
+	var txt strings.Builder
+	fmt.Fprintf(&txt, "#%d", v.MetaData.Ident)
+	fmt.Fprintf(&txt, " RegNr: %s", v.RegNr)
+	fmt.Fprintf(&txt, " VIN: %s", v.VIN)
+	fmt.Fprintf(&txt, " Brand: %s", v.Brand)
+	fmt.Fprintf(&txt, " Model: %s", v.Model)
+	fmt.Fprintf(&txt, " FuelType: %s", v.FuelType)
+	fmt.Fprintf(&txt, " RegDate: %s", v.FirstRegDate.Format("2006-01-02"))
+	return txt.String()
 }
 
 // VehicleLoader is the interface that each service must satisfy in order to provide vehicle data.
