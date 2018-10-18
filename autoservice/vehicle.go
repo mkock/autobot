@@ -43,5 +43,5 @@ func (v Vehicle) String() string {
 // VehicleLoader is the interface that each service must satisfy in order to provide vehicle data.
 type VehicleLoader interface {
 	HasNew() (bool, error)
-	LoadNew() (vehicles chan<- Vehicle, done chan<- bool, err error)
+	LoadNew() (vehicles chan<- Vehicle, done chan<- bool)
 }

@@ -9,6 +9,10 @@ import (
 	"github.com/OmniCar/autobot/autoservice"
 )
 
+// XMLParser represents an XML parser.
+type XMLParser struct {
+}
+
 // NewXMLParser creates a new XML parser.
 func NewXMLParser() *XMLParser {
 	return &XMLParser{}

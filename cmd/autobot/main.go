@@ -3,18 +3,14 @@
 package main
 
 import (
-	"bufio"
 	"flag"
 	"fmt"
-	"io"
 	"log"
-	"math"
 	"os"
-	"runtime"
-	"strings"
 
 	"github.com/OmniCar/autobot"
 	"github.com/OmniCar/autobot/autoservice"
+	"github.com/OmniCar/autobot/config"
 	"github.com/OmniCar/autobot/dataprovider"
 	"github.com/OmniCar/autobot/dmr"
 )
@@ -30,106 +26,52 @@ func main() {
 	if *cnfFile == "" {
 		log.Fatalf("Autobot: need a configuration file")
 	}
-	cnf, err := autobot.NewConfig(*cnfFile)
+	cnf, err := config.NewConfig(*cnfFile)
 	if err != nil {
 		log.Fatalf("Autobot: Unable to load configuration file %s", *cnfFile)
 	}
 
-	var src io.ReadCloser
+	var ptype int
 	if *inFile == "" {
 		fmt.Printf("Using FTP data file at %q\n", cnf.Ftp.Host)
-		prov := dataprovider.NewFtpProvider(cnf.Ftp)
-		if err := prov.Open(*inFile); err != nil {
-			log.Fatalf("Autobot: %s", err)
-		}
-		fname, _ := prov.CheckForLatest()
-		if fname == "" {
-			fmt.Println("No new stat files detected.")
-			return
-		}
-		fmt.Println("New stat file detected: " + fname)
-		fmt.Println("Fetching...")
-		if src, err = prov.Provide(); err != nil {
-			log.Fatalf("Autobot: %s", err)
-		}
-		prov.Close()
+		ptype = dataprovider.FtpProv
 	} else {
 		fmt.Printf("Using local data file: %s\n", *inFile)
-		prov := dataprovider.NewFileProvider()
-		if err := prov.Open(*inFile); err != nil {
-			log.Fatalf("Autobot: %s", err)
-		}
-		if src, err = prov.Provide(); err != nil {
-			log.Fatal(err)
-		}
-		prov.Close()
+		ptype = dataprovider.FsProv
 	}
 
-	// Instantiate an XML parser.
-	parser := dmr.NewXMLParser()
+	prov := dataprovider.NewProvider(ptype, cnf)
+	src, err := prov.Provide(*inFile)
 
-	// Nr. of workers = cpu core count - 1 for the main go routine.
-	numWorkers := int(math.Max(1.0, float64(runtime.NumCPU()-1)))
-
-	// Prepare channels for communicating parsed data and termination.
-	lines, parsed, done := make(chan []string, numWorkers), make(chan autoservice.Vehicle, numWorkers), make(chan int)
-
-	// Start the number of workers (parsers) determined by numWorkers.
-	fmt.Printf("Starting %v workers...\n", numWorkers)
-	for i := 0; i < numWorkers; i++ {
-		go parser.ParseExcerpt(i, lines, parsed, done)
-	}
-
-	// Main file scanner go routine.
-	go func() {
-		scanner := bufio.NewScanner(src)
-		excerpt := []string{}
-		grab := false
-		defer func() {
-			close(lines)
-			src.Close()
-		}()
-		for scanner.Scan() {
-			line := strings.TrimSpace(scanner.Text())
-			if strings.HasPrefix(line, "<ns:Statistik>") {
-				grab = true
-			} else if strings.HasPrefix(line, "</ns:Statistik>") {
-				grab = false
-				excerpt = append(excerpt, line)
-				lines <- excerpt // On every closing elem. we send the excerpt to a worker and move on.
-				excerpt = nil
-			}
-			if grab {
-				excerpt = append(excerpt, line)
-			}
-		}
-	}()
-
-	var vehicles autoservice.VehicleList = make(map[uint64]autoservice.Vehicle) // For keeping track of unique vehicles.
+	dmrService := dmr.NewService()
+	vehicles, done := dmrService.LoadNew(src)
+	var vlist autoservice.VehicleList = make(map[uint64]autoservice.Vehicle) // For keeping track of vehicles.
 
 	// Wait for parsed excerpts to come in, and ensure their uniqueness by using a map.
-	waits := numWorkers
+	waits := cap(done)
+Mainloop:
 	for {
 		select {
-		case vehicle := <-parsed:
-			if _, ok := vehicles[vehicle.MetaData.Ident]; !ok {
-				vehicles[vehicle.MetaData.Ident] = vehicle
+		case vehicle := <-vehicles:
+			if _, ok := vlist[vehicle.MetaData.Ident]; !ok {
+				vlist[vehicle.MetaData.Ident] = vehicle
 			}
 		case <-done:
 			waits--
 			if waits == 0 {
-				writeToFile(vehicles, *outFile)
+				writeToFile(vlist, *outFile)
 				if *inFile != "" {
 					// Only log processed files from the FTP.
 					autobot.LogAsProcessed(*inFile)
 				}
-				return
+				break Mainloop
 			}
 		}
 	}
-
+	fmt.Printf("Done - CSV data written to %q\n", *outFile)
 }
 
+// This is temporary.
 func writeToFile(vehicles autoservice.VehicleList, outFile string) {
 	out, err := os.Create(outFile)
 	if err != nil {
@@ -149,6 +91,4 @@ func writeToFile(vehicles autoservice.VehicleList, outFile string) {
 			fmt.Println("Unable to write to output file, unknown write error")
 		}
 	}
-
-	fmt.Printf("Done - CSV data written to %q\n", outFile)
 }

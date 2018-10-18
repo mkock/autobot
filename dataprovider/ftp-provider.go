@@ -10,28 +10,19 @@ import (
 	"strings"
 	"time"
 
+	"github.com/OmniCar/autobot/config"
 	"github.com/secsy/goftp"
 )
-
-// FtpConfig contains FTP connection configuration.
-type FtpConfig struct {
-	Host       string
-	Port       int
-	User       string
-	Password   string
-	Dir        string
-	FilePrefix string
-}
 
 // FtpProvider is a data provider that supports file retrieval via FTP.
 type FtpProvider struct {
 	fname  string
-	config FtpConfig
+	config config.FtpConfig
 	client *goftp.Client
 }
 
 // NewFtpProvider returns a new FtpProvider.
-func NewFtpProvider(conf FtpConfig) *FtpProvider {
+func NewFtpProvider(conf config.FtpConfig) *FtpProvider {
 	return &FtpProvider{config: conf}
 }
 
@@ -43,9 +34,8 @@ func (prov *FtpProvider) Open(fname string) error {
 		Password:           prov.config.Password,
 		ConnectionsPerHost: 1,
 		Timeout:            12 * time.Hour,
-		Logger:             os.Stderr,
 	}
-	fmt.Printf("Connecting to %s:%d...", prov.config.Host, prov.config.Port)
+	fmt.Printf("Connecting to %s:%d...\n", prov.config.Host, prov.config.Port)
 	client, dialErr := goftp.DialConfig(dialConf, prov.config.Host+":"+strconv.Itoa(prov.config.Port))
 	if dialErr != nil {
 		return dialErr
@@ -90,12 +80,18 @@ func (prov *FtpProvider) Provide() (io.ReadCloser, error) {
 	if statErr != nil {
 		return nil, statErr
 	}
-	r, w := io.Pipe()
-	go func() {
-		if err := prov.client.Retrieve(srcPath, w); err != nil {
-			log.Fatal(err)
-		}
-	}()
+	tmp := fmt.Sprintf("/tmp/%s", prov.fname)
+	w, err := os.Create(tmp)
+	if err != nil {
+		return nil, err
+	}
+	if err := prov.client.Retrieve(srcPath, w); err != nil {
+		log.Fatal(err)
+	}
+	if err != nil {
+		return nil, err
+	}
+	r, err := os.Open(tmp)
 	if isZipped(prov.fname) {
 		return unzip(r)
 	}

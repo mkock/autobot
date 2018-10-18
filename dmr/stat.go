@@ -56,7 +56,3 @@ type vehicleDesignation struct {
 	Variant       vehicleVariant `xml:"Variant"`
 	Type          vehicleType    `xml:"Type"`
 }
-
-// XMLParser represents an XML parser.
-type XMLParser struct {
-}
