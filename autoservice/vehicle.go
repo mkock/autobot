@@ -11,14 +11,16 @@ type VehicleList map[uint64]Vehicle
 
 // Meta contains metadata for each vehicle.
 type Meta struct {
+	Hash        uint64
 	Source      string
 	Ident       uint64
 	LastUpdated time.Time
 }
 
 // Vehicle contains the core vehicle data that Autobot manages.
+// As vehicles are persisted in Redis / Google Memory Store, they should not contain pointers.
 type Vehicle struct {
-	MetaData     Meta
+	MetaData     Meta `hash:"ignore"`
 	RegNr        string
 	VIN          string
 	Brand        string
@@ -30,7 +32,8 @@ type Vehicle struct {
 // String returns a stringified representation of the Vehicle data structure.
 func (v Vehicle) String() string {
 	var txt strings.Builder
-	fmt.Fprintf(&txt, "#%d", v.MetaData.Ident)
+	fmt.Fprintf(&txt, "#%d", v.MetaData.Hash)
+	fmt.Fprintf(&txt, " Ident: %d", v.MetaData.Ident)
 	fmt.Fprintf(&txt, " RegNr: %s", v.RegNr)
 	fmt.Fprintf(&txt, " VIN: %s", v.VIN)
 	fmt.Fprintf(&txt, " Brand: %s", v.Brand)

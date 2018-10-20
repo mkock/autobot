@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mitchellh/hashstructure"
+
 	"github.com/OmniCar/autobot/autoservice"
 )
 
@@ -22,6 +24,7 @@ func NewXMLParser() *XMLParser {
 func (p *XMLParser) ParseExcerpt(id int, lines <-chan []string, parsed chan<- autoservice.Vehicle, done chan<- int) {
 	var proc, keep int // How many excerpts did we process and keep?
 	var stat vehicleStat
+	var hash uint64
 	for excerpt := range lines {
 		if err := xml.Unmarshal([]byte(strings.Join(excerpt, "\n")), &stat); err != nil {
 			panic(err) // We _could_ skip it, but it's better to halt execution here.
@@ -41,6 +44,11 @@ func (p *XMLParser) ParseExcerpt(id int, lines <-chan []string, parsed chan<- au
 				FuelType:     stat.Info.Engine.Fuel.FuelType,
 				FirstRegDate: regDate,
 			}
+			if hash, err = hashstructure.Hash(vehicle, nil); err != nil {
+				fmt.Printf("Error: Unable to hash Vehicle struct with Ident: %d\n", vehicle.MetaData.Ident)
+				continue
+			}
+			vehicle.MetaData.Hash = hash
 			parsed <- vehicle
 			keep++
 		}
