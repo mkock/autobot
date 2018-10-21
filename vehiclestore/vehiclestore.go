@@ -1,7 +1,10 @@
 package vehiclestore
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/OmniCar/autobot/autoservice"
@@ -12,6 +15,7 @@ import (
 // VehicleStore represents a Redis-compatible memory store such as Redis or Google Memory Store.
 type VehicleStore struct {
 	cnf   config.MemStoreConfig
+	opts  config.SyncConfig
 	store *redis.Client
 	ops   []syncOp
 }
@@ -36,8 +40,8 @@ func (op *syncOp) String() string {
 }
 
 // NewVehicleStore returns a new VehicleStore, which you can then interact with in order to start sync operations etc.
-func NewVehicleStore(cnf config.MemStoreConfig) *VehicleStore {
-	return &VehicleStore{cnf: cnf}
+func NewVehicleStore(storeCnf config.MemStoreConfig, syncCnf config.SyncConfig) *VehicleStore {
+	return &VehicleStore{cnf: storeCnf, opts: syncCnf}
 }
 
 // Open connects to the vehicle store.
@@ -73,18 +77,119 @@ func (vs *VehicleStore) NewSyncOp(source string) SyncOpID {
 	return id
 }
 
-// Sync reads from channel "vehicles" and synchronizes each one with the store. It stops when receiving a bool on
-// channel "done".
-func (vs *VehicleStore) Sync(id SyncOpID, vehicles <-chan autoservice.Vehicle, done <-chan bool) {
+func (vs *VehicleStore) getOp(id SyncOpID) *syncOp {
+	// Find the referenced sync op.
 	if int(id) > len(vs.ops)-1 {
-		panic(fmt.Sprintf("Autobot: no syncOp with id %d", id))
+		panic(fmt.Sprintf("no syncOp with id %d", id))
 	}
-	op := vs.ops[id]
+	return &vs.ops[id]
+}
 
-	// Finalize sync operation.
+// finalize calculates the total duration of the sync operation and pushes a stringified status result to mem-store.
+func (vs *VehicleStore) finalize(id SyncOpID) {
+	op := vs.getOp(id)
 	end := time.Now()
 	op.duration = end.Sub(op.started)
 	if _, err := vs.store.LPush("ops", op.String()).Result(); err != nil {
-		panic(fmt.Sprintf("Autobot: unable to finalize sync operation"))
+		// @TODO: Perhaps we don't need to panic here?
+		panic(fmt.Sprintf("unable to finalize sync operation"))
 	}
+}
+
+// writeToFile is good to have around for debugging purposes.
+func (vs *VehicleStore) writeToFile(vehicles autoservice.VehicleList, outFile string) {
+	out, err := os.Create(outFile)
+	if err != nil {
+		fmt.Printf("Unable to open output file %v for writing.\n", outFile)
+		return
+	}
+	defer func() {
+		if err := out.Close(); err != nil {
+			panic(err)
+		}
+	}()
+
+	// Write CSV data.
+	for _, vehicle := range vehicles {
+		_, err := out.WriteString(vehicle.String() + "\n")
+		if err != nil {
+			fmt.Println("Unable to write to output file, unknown write error")
+		}
+	}
+	fmt.Println("Wrote processed vehicle list to out.csv")
+}
+
+// Sync reads from channel "vehicles" and synchronizes each one with the store. It stops when receiving a bool on
+// channel "done". Along the way, it keeps track of the number of vehicles that were processed and synchronized.
+// This data is stored on the syncOp.
+func (vs *VehicleStore) Sync(id SyncOpID, vehicles <-chan autoservice.Vehicle, done <-chan bool) error {
+	op := vs.getOp(id)
+	// @TODO Remove VehicleList and stream the vehicles directly to a file?
+	var vlist autoservice.VehicleList = make(map[uint64]autoservice.Vehicle) // For keeping track of vehicles.
+	for {
+		select {
+		case vehicle := <-vehicles:
+			if _, ok := vlist[vehicle.MetaData.Ident]; !ok {
+				vlist[vehicle.MetaData.Ident] = vehicle
+			}
+			op.processed++
+			ok, err := vs.syncVehicle(vehicle)
+			if err != nil {
+				return err
+			}
+			if ok {
+				op.synced++
+			}
+		case <-done:
+			vs.writeToFile(vlist, "out.csv")
+			vs.finalize(id)
+			return nil
+		}
+	}
+}
+
+// serializeVehicle converts the given Vehicle to a string using JSON encoding.
+func serializeVehicle(vehicle autoservice.Vehicle) (string, error) {
+	b, err := json.Marshal(vehicle)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
+}
+
+// unserializeVehicle converts the given string to a Vehicle using JSON decoding.
+func unserializeVehicle(str string) (autoservice.Vehicle, error) {
+	var vehicle autoservice.Vehicle
+	if err := json.Unmarshal([]byte(str), vehicle); err != nil {
+		return vehicle, err
+	}
+	return vehicle, nil
+}
+
+// syncVehicle synchronizes a single Vehicle with the memory store.
+// It returns a bool indicating whether the vehicle was added/updated or not.
+func (vs *VehicleStore) syncVehicle(vehicle autoservice.Vehicle) (bool, error) {
+	mapName := vs.opts.VehicleMap
+	hash := strconv.FormatUint(vehicle.MetaData.Hash, 10)
+	exists, err := vs.store.HExists(mapName, hash).Result()
+	if err != nil {
+		return false, err
+	}
+	if exists {
+		return false, nil
+	}
+	val, err := serializeVehicle(vehicle)
+	if err != nil {
+		return false, err
+	}
+	if _, err := vs.store.HSet(mapName, hash, val).Result(); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// Status returns a status for the sync operation with the given id.
+func (vs *VehicleStore) Status(id SyncOpID) string {
+	op := vs.getOp(id)
+	return op.String()
 }

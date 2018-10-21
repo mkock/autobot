@@ -57,7 +57,7 @@ func (prov *FtpProvider) CheckForLatest() (string, error) {
 		return "", err
 	}
 	if len(files) == 0 {
-		return "", fmt.Errorf("Autobot: no such file %s", prov.fname)
+		return "", fmt.Errorf("no such file %s", prov.fname)
 	}
 	newest := prov.fname
 	if newest == "" {

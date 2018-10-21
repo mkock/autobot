@@ -30,6 +30,18 @@ type Provider struct {
 	impl DataProvider
 }
 
+// ProvTypeString returns the string representation of the provider type.
+func ProvTypeString(ptype int) string {
+	switch ptype {
+	case FtpProv:
+		return "ftp"
+	case FsProv:
+		return "fs"
+	default:
+		return ""
+	}
+}
+
 // NewProvider returns a new Provider of the requested type (implementation).
 func NewProvider(ptype int, config config.Config) *Provider {
 	var impl DataProvider
@@ -45,7 +57,7 @@ func NewProvider(ptype int, config config.Config) *Provider {
 // Provide calls the correct DataProvider and returns an open local file, ready to parse.
 func (prov *Provider) Provide(fname string) (io.ReadCloser, error) {
 	if err := prov.impl.Open(fname); err != nil {
-		log.Fatalf("Autobot: %s", err)
+		log.Fatal(err)
 	}
 	fname, _ = prov.impl.CheckForLatest()
 	if fname == "" {
@@ -57,7 +69,7 @@ func (prov *Provider) Provide(fname string) (io.ReadCloser, error) {
 	var r io.ReadCloser
 	var err error
 	if r, err = prov.impl.Provide(); err != nil {
-		log.Fatalf("Autobot: %s", err)
+		log.Fatal(err)
 	}
 	return r, nil
 }

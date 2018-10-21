@@ -62,10 +62,22 @@ func (service *Service) processFile(rc io.ReadCloser, numWorkers int, vehicles c
 }
 
 // LoadNew loads all new vehicles from DMR and returns them on a channel.
-func (service *Service) LoadNew(rc io.ReadCloser) (vehicles chan autoservice.Vehicle, done chan int) {
+// It will send True on channel "done" once all vehicles have been processed.
+func (service *Service) LoadNew(rc io.ReadCloser) (vehicles chan autoservice.Vehicle, done chan bool) {
 	// Nr. of workers = cpu core count - 1 for the main go routine.
 	numWorkers := int(math.Max(1.0, float64(runtime.NumCPU()-1)))
-	vehicles, done = make(chan autoservice.Vehicle), make(chan int, numWorkers)
-	go service.processFile(rc, numWorkers, vehicles, done)
+	vehicles, done = make(chan autoservice.Vehicle), make(chan bool)
+	workerDone := make(chan int, numWorkers)
+	go service.processFile(rc, numWorkers, vehicles, workerDone)
+
+	// Collect answers from individual workers and send True on "done".
+	go func() {
+		for i := 0; i < numWorkers; i++ {
+			_ = <-workerDone
+			// fmt.Printf("Worker %d is done.", wid)
+		}
+		done <- true
+	}()
+
 	return vehicles, done
 }

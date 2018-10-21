@@ -8,6 +8,7 @@ import (
 type Config struct {
 	Ftp      FtpConfig
 	MemStore MemStoreConfig
+	Sync     SyncConfig
 }
 
 // FtpConfig contains FTP connection configuration.
@@ -26,6 +27,12 @@ type MemStoreConfig struct {
 	Port     int
 	Password string
 	DB       int
+}
+
+// SyncConfig contains configuration related to the actual synchronization algorithm.
+type SyncConfig struct {
+	VehicleMap  string
+	HistoryList string
 }
 
 // NewConfig returns a app configuration struct, loaded from a TOML file.

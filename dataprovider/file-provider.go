@@ -23,7 +23,7 @@ func (prov *FileProvider) Open(fname string) error {
 		return err
 	}
 	if finfo.IsDir() {
-		return fmt.Errorf("Autobot: filename %s is a directory", fname)
+		return fmt.Errorf("filename %s is a directory", fname)
 	}
 	prov.fname = fname
 	return nil
