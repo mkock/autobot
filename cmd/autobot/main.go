@@ -13,6 +13,7 @@ import (
 	"github.com/OmniCar/autobot/config"
 	"github.com/OmniCar/autobot/dataprovider"
 	"github.com/OmniCar/autobot/dmr"
+	"github.com/OmniCar/autobot/vehiclestore"
 )
 
 var cnfFile = flag.String("cnffile", "config.toml", "Configuration file for FTP connectivity")
@@ -46,6 +47,19 @@ func main() {
 	dmrService := dmr.NewService()
 	vehicles, done := dmrService.LoadNew(src)
 	var vlist autoservice.VehicleList = make(map[uint64]autoservice.Vehicle) // For keeping track of vehicles.
+
+	store := vehiclestore.NewVehicleStore(cnf.MemStore)
+	if err := store.Open(); err != nil {
+		panic("Autobot: unable to connect to memory store")
+	}
+
+	allDone := make(chan bool)
+
+	go func() {
+		id := store.NewSyncOp("ftp")
+		store.Sync(id, vehicles, allDone)
+		store.Close()
+	}()
 
 	// Wait for parsed excerpts to come in, and ensure their uniqueness by using a map.
 	waits := cap(done)
