@@ -58,7 +58,6 @@ func (service *Service) processFile(rc io.ReadCloser, numWorkers int, vehicles c
 			excerpt = append(excerpt, line)
 		}
 	}
-
 }
 
 // LoadNew loads all new vehicles from DMR and returns them on a channel.

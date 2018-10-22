@@ -40,6 +40,12 @@ func (prov *FtpProvider) Open(fname string) error {
 	if dialErr != nil {
 		return dialErr
 	}
+	// Run a STAT op to verify the connection, due to a bug in goftp where it doesn't return an error when the
+	// connection fails.
+	_, err := client.Stat("/")
+	if err != nil {
+		return err
+	}
 	prov.client = client
 	return nil
 }

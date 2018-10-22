@@ -3,4 +3,5 @@
 *.xml
 *.zip
 *.log
+*.txt
 /release/*

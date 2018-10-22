@@ -170,6 +170,8 @@ func unserializeVehicle(str string) (autoservice.Vehicle, error) {
 // It returns a bool indicating whether the vehicle was added/updated or not.
 func (vs *VehicleStore) syncVehicle(vehicle autoservice.Vehicle) (bool, error) {
 	mapName := vs.opts.VehicleMap
+	vinIndex := vs.opts.VINSortedSet
+	regIndex := vs.opts.RegNrSortedSet
 	hash := strconv.FormatUint(vehicle.MetaData.Hash, 10)
 	exists, err := vs.store.HExists(mapName, hash).Result()
 	if err != nil {
@@ -182,7 +184,18 @@ func (vs *VehicleStore) syncVehicle(vehicle autoservice.Vehicle) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if _, err := vs.store.HSet(mapName, hash, val).Result(); err != nil {
+	// Store the vehicle.
+	if _, err = vs.store.HSet(mapName, hash, val).Result(); err != nil {
+		return false, err
+	}
+	// Update the VIN index.
+	zVIN := redis.Z{Score: 0, Member: fmt.Sprintf("%s:%s", vehicle.VIN, hash)}
+	if _, err = vs.store.ZAdd(vinIndex, zVIN).Result(); err != nil {
+		return false, err
+	}
+	// Update the reg.nr index.
+	zReg := redis.Z{Score: 0, Member: fmt.Sprintf("%s:%s", vehicle.RegNr, hash)}
+	if _, err = vs.store.ZAdd(regIndex, zReg).Result(); err != nil {
 		return false, err
 	}
 	return true, nil

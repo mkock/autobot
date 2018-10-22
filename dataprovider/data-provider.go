@@ -61,7 +61,6 @@ func (prov *Provider) Provide(fname string) (io.ReadCloser, error) {
 	}
 	fname, _ = prov.impl.CheckForLatest()
 	if fname == "" {
-		fmt.Println("No new stat files detected.")
 		return nil, nil
 	}
 	fmt.Println("New stat file detected: " + fname)

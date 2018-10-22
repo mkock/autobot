@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/OmniCar/autobot/config"
 	"github.com/OmniCar/autobot/dataprovider"
@@ -39,6 +40,13 @@ func main() {
 
 	prov := dataprovider.NewProvider(ptype, cnf)
 	src, err := prov.Provide(*inFile)
+	if err != nil {
+		log.Fatalf("error during file retrieval: %s", err)
+	}
+	if src == nil {
+		log.Print("No stat file detected. Quitting.")
+		os.Exit(0)
+	}
 
 	store := vehiclestore.NewVehicleStore(cnf.MemStore, cnf.Sync)
 	if err := store.Open(); err != nil {
