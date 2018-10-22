@@ -31,15 +31,20 @@ type Vehicle struct {
 
 // String returns a stringified representation of the Vehicle data structure.
 func (v Vehicle) String() string {
+	return v.FlexString("", " ")
+}
+
+// FlexString returns a stringified multi-line representation of the Vehicle data structure.
+func (v Vehicle) FlexString(lb, leftPad string) string {
 	var txt strings.Builder
-	fmt.Fprintf(&txt, "#%d", v.MetaData.Hash)
-	fmt.Fprintf(&txt, " Ident: %d", v.MetaData.Ident)
-	fmt.Fprintf(&txt, " RegNr: %s", v.RegNr)
-	fmt.Fprintf(&txt, " VIN: %s", v.VIN)
-	fmt.Fprintf(&txt, " Brand: %s", v.Brand)
-	fmt.Fprintf(&txt, " Model: %s", v.Model)
-	fmt.Fprintf(&txt, " FuelType: %s", v.FuelType)
-	fmt.Fprintf(&txt, " RegDate: %s", v.FirstRegDate.Format("2006-01-02"))
+	fmt.Fprintf(&txt, "#%d%s", v.MetaData.Hash, lb)
+	fmt.Fprintf(&txt, "%sIdent: %d%s", leftPad, v.MetaData.Ident, lb)
+	fmt.Fprintf(&txt, "%sRegNr: %s%s", leftPad, v.RegNr, lb)
+	fmt.Fprintf(&txt, "%sVIN: %s%s", leftPad, v.VIN, lb)
+	fmt.Fprintf(&txt, "%sBrand: %s%s", leftPad, v.Brand, lb)
+	fmt.Fprintf(&txt, "%sModel: %s%s", leftPad, v.Model, lb)
+	fmt.Fprintf(&txt, "%sFuelType: %s%s", leftPad, v.FuelType, lb)
+	fmt.Fprintf(&txt, "%sRegDate: %s%s", leftPad, v.FirstRegDate.Format("2006-01-02"), lb)
 	return txt.String()
 }
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/OmniCar/autobot/autoservice"
@@ -122,6 +123,7 @@ func (vs *VehicleStore) writeToFile(vehicles autoservice.VehicleList, outFile st
 // Sync reads from channel "vehicles" and synchronizes each one with the store. It stops when receiving a bool on
 // channel "done". Along the way, it keeps track of the number of vehicles that were processed and synchronized.
 // This data is stored on the syncOp.
+// @TODO Consider running "syncVehicle" in a go routine for faster execution speed.
 func (vs *VehicleStore) Sync(id SyncOpID, vehicles <-chan autoservice.Vehicle, done <-chan bool) error {
 	op := vs.getOp(id)
 	// @TODO Remove VehicleList and stream the vehicles directly to a file?
@@ -160,7 +162,7 @@ func serializeVehicle(vehicle autoservice.Vehicle) (string, error) {
 // unserializeVehicle converts the given string to a Vehicle using JSON decoding.
 func unserializeVehicle(str string) (autoservice.Vehicle, error) {
 	var vehicle autoservice.Vehicle
-	if err := json.Unmarshal([]byte(str), vehicle); err != nil {
+	if err := json.Unmarshal([]byte(str), &vehicle); err != nil {
 		return vehicle, err
 	}
 	return vehicle, nil
@@ -205,4 +207,48 @@ func (vs *VehicleStore) syncVehicle(vehicle autoservice.Vehicle) (bool, error) {
 func (vs *VehicleStore) Status(id SyncOpID) string {
 	op := vs.getOp(id)
 	return op.String()
+}
+
+// lookup attempts to lookup the given id (VIN or registration number) in the given index.
+// The id type must match the index which is being used, otherwise there will never be a match.
+// If a match was found, the vehicle hash is returned.
+func (vs *VehicleStore) lookup(id, index string) (string, error) {
+	zBy := redis.ZRangeBy{
+		Min: fmt.Sprintf("[%s", id),
+		Max: fmt.Sprintf("[%s\xff", id),
+	}
+	matches, err := vs.store.ZRangeByLex(index, zBy).Result()
+	if err != nil {
+		return "", err
+	}
+	if len(matches) == 0 {
+		return "", nil // No match.
+	}
+	return strings.Split(matches[0], ":")[1], nil
+}
+
+// LookupByVIN attempts to lookup a vehicle by its VIN number.
+func (vs *VehicleStore) LookupByVIN(VIN string) (vehicle autoservice.Vehicle, err error) {
+	hash, err := vs.lookup(strings.ToUpper(VIN), vs.opts.VINSortedSet)
+	if err != nil {
+		return
+	}
+	var str string
+	if str, err = vs.store.HGet(vs.opts.VehicleMap, hash).Result(); err != nil {
+		return
+	}
+	return unserializeVehicle(str)
+}
+
+// LookupByRegNr attempts to lookup a vehicle by its registration number.
+func (vs *VehicleStore) LookupByRegNr(regNr string) (vehicle autoservice.Vehicle, err error) {
+	hash, err := vs.lookup(strings.ToUpper(regNr), vs.opts.RegNrSortedSet)
+	if err != nil {
+		return
+	}
+	var str string
+	if str, err = vs.store.HGet(vs.opts.VehicleMap, hash).Result(); err != nil {
+		return
+	}
+	return unserializeVehicle(str)
 }

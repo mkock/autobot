@@ -37,11 +37,11 @@ func (p *XMLParser) ParseExcerpt(id int, lines <-chan []string, parsed chan<- au
 			}
 			vehicle := autoservice.Vehicle{
 				MetaData:     autoservice.Meta{Source: stat.Info.Source, Ident: stat.Ident, LastUpdated: time.Now()},
-				RegNr:        stat.RegNo,
-				VIN:          stat.Info.VIN,
-				Brand:        stat.Info.Designation.BrandTypeName,
-				Model:        stat.Info.Designation.Model.Name,
-				FuelType:     stat.Info.Engine.Fuel.FuelType,
+				RegNr:        strings.ToUpper(stat.RegNo),
+				VIN:          strings.ToUpper(stat.Info.VIN),
+				Brand:        stat.Info.Designation.BrandTypeName, // @TODO Title-case brand name.
+				Model:        stat.Info.Designation.Model.Name,    // @TODO Title-case model name.
+				FuelType:     stat.Info.Engine.Fuel.FuelType,      // @TODO Title-case fuel-type name.
 				FirstRegDate: regDate,
 			}
 			if hash, err = hashstructure.Hash(vehicle, nil); err != nil {

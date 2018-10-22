@@ -16,6 +16,8 @@ import (
 
 var cnfFile = flag.String("cnffile", "config.toml", "Configuration file for FTP connectivity")
 var inFile = flag.String("infile", "", "DMR XML file in UTF-8 format")
+var vin = flag.String("vin", "", "VIN number to lookup, if any (will not synchronize data)")
+var regNr = flag.String("regnr", "", "Registration number to lookup, if any (will not synchronize data)")
 
 func main() {
 	flag.Parse()
@@ -27,6 +29,31 @@ func main() {
 	cnf, err := config.NewConfig(*cnfFile)
 	if err != nil {
 		log.Fatalf("unable to load configuration file %s", *cnfFile)
+	}
+
+	store := vehiclestore.NewVehicleStore(cnf.MemStore, cnf.Sync)
+	if err := store.Open(); err != nil {
+		log.Fatalf("unable to connect to memory store, check your configuration file")
+	}
+	defer func() {
+		store.Close()
+	}()
+	if *vin != "" {
+		vehicle, err := store.LookupByVIN(*vin)
+		if err != nil {
+			log.Fatalf("unable to lookup VIN %s: %s", *vin, err)
+		}
+		fmt.Println("Found!")
+		fmt.Println(vehicle.FlexString("\n", "  "))
+		os.Exit(0)
+	} else if *regNr != "" {
+		vehicle, err := store.LookupByRegNr(*regNr)
+		if err != nil {
+			log.Fatalf("unable to lookup reg. nr. %s: %s", *regNr, err)
+		}
+		fmt.Println("Found!")
+		fmt.Println(vehicle.FlexString("\n", "  "))
+		os.Exit(0)
 	}
 
 	var ptype int
@@ -48,17 +75,10 @@ func main() {
 		os.Exit(0)
 	}
 
-	store := vehiclestore.NewVehicleStore(cnf.MemStore, cnf.Sync)
-	if err := store.Open(); err != nil {
-		log.Fatalf("unable to connect to memory store, check your configuration file")
-	}
 	id := store.NewSyncOp(dataprovider.ProvTypeString(ptype))
 
 	dmrService := dmr.NewService()
 	vehicles, done := dmrService.LoadNew(src)
-	defer func() {
-		store.Close()
-	}()
 	if err := store.Sync(id, vehicles, done); err != nil {
 		log.Fatalf("error during sync: %s", err)
 	}

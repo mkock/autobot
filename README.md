@@ -77,7 +77,7 @@ That's all there is to it.
 
 ## Changelog
 
-- _v1.0_ Initial version, with synchronization from DMR using Redis/Google Memory Store and data hashing.
+- _v1.0_ (Oct. 18) Initial version, with synchronization from DMR using Redis/Google Memory Store and data hashing.
 
 ## FAQ
 
