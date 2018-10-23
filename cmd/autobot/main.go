@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime"
+	"time"
 
 	"github.com/OmniCar/autobot/config"
 	"github.com/OmniCar/autobot/dataprovider"
@@ -18,8 +20,24 @@ var cnfFile = flag.String("cnffile", "config.toml", "Configuration file for FTP 
 var inFile = flag.String("infile", "", "DMR XML file in UTF-8 format")
 var vin = flag.String("vin", "", "VIN number to lookup, if any (will not synchronize data)")
 var regNr = flag.String("regnr", "", "Registration number to lookup, if any (will not synchronize data)")
+var debug = flag.Bool("debug", false, "Print CPU count, goroutine count and memory usage every 10 seconds")
+
+func monitorRuntime() {
+	log.Println("Number of CPUs:", runtime.NumCPU())
+	m := &runtime.MemStats{}
+	for {
+		r := runtime.NumGoroutine()
+		log.Println("Number of goroutines", r)
+		runtime.ReadMemStats(m)
+		log.Println("Allocated memory:", m.Alloc)
+		time.Sleep(10 * time.Second)
+	}
+}
 
 func main() {
+	if *debug {
+		go monitorRuntime()
+	}
 	flag.Parse()
 
 	// Load and parse configuration file.

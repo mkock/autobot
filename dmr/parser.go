@@ -8,7 +8,7 @@ import (
 
 	"github.com/mitchellh/hashstructure"
 
-	"github.com/OmniCar/autobot/autoservice"
+	"github.com/OmniCar/autobot/vehicle"
 )
 
 // XMLParser represents an XML parser.
@@ -21,7 +21,7 @@ func NewXMLParser() *XMLParser {
 }
 
 // ParseExcerpt parses XML file using XML decoding.
-func (p *XMLParser) ParseExcerpt(id int, lines <-chan []string, parsed chan<- autoservice.Vehicle, done chan<- int) {
+func (p *XMLParser) ParseExcerpt(id int, lines <-chan []string, parsed chan<- vehicle.Vehicle, done chan<- int) {
 	var proc, keep int // How many excerpts did we process and keep?
 	var stat vehicleStat
 	var hash uint64
@@ -35,13 +35,13 @@ func (p *XMLParser) ParseExcerpt(id int, lines <-chan []string, parsed chan<- au
 				fmt.Printf("Error: Unable to parse first registration date: %s\n", stat.Info.FirstRegDate)
 				continue
 			}
-			vehicle := autoservice.Vehicle{
-				MetaData:     autoservice.Meta{Source: stat.Info.Source, Ident: stat.Ident, LastUpdated: time.Now()},
+			vehicle := vehicle.Vehicle{
+				MetaData:     vehicle.Meta{Source: stat.Info.Source, Ident: stat.Ident, LastUpdated: time.Now()},
 				RegNr:        strings.ToUpper(stat.RegNo),
 				VIN:          strings.ToUpper(stat.Info.VIN),
-				Brand:        stat.Info.Designation.BrandTypeName, // @TODO Title-case brand name.
-				Model:        stat.Info.Designation.Model.Name,    // @TODO Title-case model name.
-				FuelType:     stat.Info.Engine.Fuel.FuelType,      // @TODO Title-case fuel-type name.
+				Brand:        vehicle.PrettyBrandName(stat.Info.Designation.BrandTypeName),
+				Model:        stat.Info.Designation.Model.Name, // @TODO Title-case model name? Probably difficult.
+				FuelType:     vehicle.PrettyFuelType(stat.Info.Engine.Fuel.FuelType),
 				FirstRegDate: regDate,
 			}
 			if hash, err = hashstructure.Hash(vehicle, nil); err != nil {

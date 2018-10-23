@@ -1,4 +1,4 @@
-package autoservice
+package vehicle
 
 import (
 	"fmt"
@@ -6,8 +6,8 @@ import (
 	"time"
 )
 
-// VehicleList contains vehicles that were found during parsing.
-type VehicleList map[uint64]Vehicle
+// List contains vehicles that were found during parsing.
+type List map[uint64]Vehicle
 
 // Meta contains metadata for each vehicle.
 type Meta struct {
@@ -48,8 +48,22 @@ func (v Vehicle) FlexString(lb, leftPad string) string {
 	return txt.String()
 }
 
-// VehicleLoader is the interface that each service must satisfy in order to provide vehicle data.
-type VehicleLoader interface {
+// PrettyBrandName titles-cases the given brand name unless its length is 3 or below, in which case everything is
+// uppercased. This should handle most cases.
+func PrettyBrandName(brand string) string {
+	if len(brand) <= 3 {
+		return strings.ToUpper(brand)
+	}
+	return strings.Title(strings.ToLower(brand))
+}
+
+// PrettyFuelType normalizes fuel-type by capitalizing the first letter only.
+func PrettyFuelType(ft string) string {
+	return strings.Title(strings.ToLower(ft))
+}
+
+// Loader is the interface that each service must satisfy in order to provide vehicle data.
+type Loader interface {
 	HasNew() (bool, error)
 	LoadNew() (vehicles chan<- Vehicle, done chan<- bool)
 }

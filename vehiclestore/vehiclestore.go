@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/OmniCar/autobot/autoservice"
 	"github.com/OmniCar/autobot/config"
+	"github.com/OmniCar/autobot/vehicle"
 	"github.com/go-redis/redis"
 )
 
@@ -98,7 +98,7 @@ func (vs *VehicleStore) finalize(id SyncOpID) {
 }
 
 // writeToFile is good to have around for debugging purposes.
-func (vs *VehicleStore) writeToFile(vehicles autoservice.VehicleList, outFile string) {
+func (vs *VehicleStore) writeToFile(vehicles vehicle.List, outFile string) {
 	out, err := os.Create(outFile)
 	if err != nil {
 		fmt.Printf("Unable to open output file %v for writing.\n", outFile)
@@ -124,10 +124,10 @@ func (vs *VehicleStore) writeToFile(vehicles autoservice.VehicleList, outFile st
 // channel "done". Along the way, it keeps track of the number of vehicles that were processed and synchronized.
 // This data is stored on the syncOp.
 // @TODO Consider running "syncVehicle" in a go routine for faster execution speed.
-func (vs *VehicleStore) Sync(id SyncOpID, vehicles <-chan autoservice.Vehicle, done <-chan bool) error {
+func (vs *VehicleStore) Sync(id SyncOpID, vehicles <-chan vehicle.Vehicle, done <-chan bool) error {
 	op := vs.getOp(id)
 	// @TODO Remove VehicleList and stream the vehicles directly to a file?
-	var vlist autoservice.VehicleList = make(map[uint64]autoservice.Vehicle) // For keeping track of vehicles.
+	var vlist vehicle.List = make(map[uint64]vehicle.Vehicle) // For keeping track of vehicles.
 	for {
 		select {
 		case vehicle := <-vehicles:
@@ -151,7 +151,7 @@ func (vs *VehicleStore) Sync(id SyncOpID, vehicles <-chan autoservice.Vehicle, d
 }
 
 // serializeVehicle converts the given Vehicle to a string using JSON encoding.
-func serializeVehicle(vehicle autoservice.Vehicle) (string, error) {
+func serializeVehicle(vehicle vehicle.Vehicle) (string, error) {
 	b, err := json.Marshal(vehicle)
 	if err != nil {
 		return "", err
@@ -160,8 +160,8 @@ func serializeVehicle(vehicle autoservice.Vehicle) (string, error) {
 }
 
 // unserializeVehicle converts the given string to a Vehicle using JSON decoding.
-func unserializeVehicle(str string) (autoservice.Vehicle, error) {
-	var vehicle autoservice.Vehicle
+func unserializeVehicle(str string) (vehicle.Vehicle, error) {
+	var vehicle vehicle.Vehicle
 	if err := json.Unmarshal([]byte(str), &vehicle); err != nil {
 		return vehicle, err
 	}
@@ -170,7 +170,7 @@ func unserializeVehicle(str string) (autoservice.Vehicle, error) {
 
 // syncVehicle synchronizes a single Vehicle with the memory store.
 // It returns a bool indicating whether the vehicle was added/updated or not.
-func (vs *VehicleStore) syncVehicle(vehicle autoservice.Vehicle) (bool, error) {
+func (vs *VehicleStore) syncVehicle(vehicle vehicle.Vehicle) (bool, error) {
 	mapName := vs.opts.VehicleMap
 	vinIndex := vs.opts.VINSortedSet
 	regIndex := vs.opts.RegNrSortedSet
@@ -228,7 +228,7 @@ func (vs *VehicleStore) lookup(id, index string) (string, error) {
 }
 
 // LookupByVIN attempts to lookup a vehicle by its VIN number.
-func (vs *VehicleStore) LookupByVIN(VIN string) (vehicle autoservice.Vehicle, err error) {
+func (vs *VehicleStore) LookupByVIN(VIN string) (vehicle vehicle.Vehicle, err error) {
 	hash, err := vs.lookup(strings.ToUpper(VIN), vs.opts.VINSortedSet)
 	if err != nil {
 		return
@@ -241,7 +241,7 @@ func (vs *VehicleStore) LookupByVIN(VIN string) (vehicle autoservice.Vehicle, er
 }
 
 // LookupByRegNr attempts to lookup a vehicle by its registration number.
-func (vs *VehicleStore) LookupByRegNr(regNr string) (vehicle autoservice.Vehicle, err error) {
+func (vs *VehicleStore) LookupByRegNr(regNr string) (vehicle vehicle.Vehicle, err error) {
 	hash, err := vs.lookup(strings.ToUpper(regNr), vs.opts.RegNrSortedSet)
 	if err != nil {
 		return
