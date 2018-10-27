@@ -35,6 +35,17 @@ type syncOp struct {
 	synced    int
 }
 
+// LogEntry contains two parts: a timestamp (logging time) and a message.
+type LogEntry struct {
+	LoggedAt time.Time
+	Message  string
+}
+
+// String displays a human readable log message.
+func (e LogEntry) String() string {
+	return e.LoggedAt.Format("2006-01-02T15:04:04 ") + e.Message
+}
+
 // String returns a string with some status information on the operation.
 func (op *syncOp) String() string {
 	return fmt.Sprintf("Sync from %s started: %s, duration: %s. Summary: synced %d of %d vehicles", op.source, op.started.Format("2006-01-02T15:04:05"), op.duration, op.synced, op.processed)
@@ -126,7 +137,7 @@ func (vs *VehicleStore) writeToFile(vehicles vehicle.List, outFile string) {
 // @TODO Consider running "syncVehicle" in a go routine for faster execution speed.
 func (vs *VehicleStore) Sync(id SyncOpID, vehicles <-chan vehicle.Vehicle, done <-chan bool) error {
 	op := vs.getOp(id)
-	// @TODO Remove VehicleList and stream the vehicles directly to a file?
+	// @TODO Remove vehicle.List and stream the vehicles directly to a file?
 	var vlist vehicle.List = make(map[uint64]vehicle.Vehicle) // For keeping track of vehicles.
 	for {
 		select {
@@ -143,6 +154,7 @@ func (vs *VehicleStore) Sync(id SyncOpID, vehicles <-chan vehicle.Vehicle, done 
 				op.synced++
 			}
 		case <-done:
+			vs.Log(op.String())
 			vs.writeToFile(vlist, "out.csv")
 			vs.finalize(id)
 			return nil
@@ -251,4 +263,64 @@ func (vs *VehicleStore) LookupByRegNr(regNr string) (vehicle vehicle.Vehicle, er
 		return
 	}
 	return unserializeVehicle(str)
+}
+
+// Clear clears out the entire vehicle store, including indexes.
+func (vs *VehicleStore) Clear() error {
+	var err error
+	_, err = vs.store.Del(vs.opts.VehicleMap).Result()
+	if err != nil {
+		return err
+	}
+	_, err = vs.store.Del(vs.opts.RegNrSortedSet).Result()
+	if err != nil {
+		return err
+	}
+	_, err = vs.store.Del(vs.opts.VINSortedSet).Result()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// Log logs a message to the vehicle store history together with the logging time.
+func (vs *VehicleStore) Log(msg string) error {
+	now := time.Now()
+	zLog := redis.Z{Score: 0, Member: now.Format("20060102T150405") + ":" + msg}
+	if _, err := vs.store.ZAdd(vs.opts.HistorySortedSet, zLog).Result(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// unmarshalLogEntry takes a string containing exactly one colon and returns a LogEntry with a timestamp parsed
+// from the first value (before the colon), and an unparsed message (after the colon).
+func unmarshalLogEntry(entry string) (LogEntry, error) {
+	log := LogEntry{}
+	if !strings.Contains(entry, ":") {
+		return log, fmt.Errorf("history: log entry contains an unrecognised format: %s", entry)
+	}
+	parts := strings.SplitAfterN(entry, ":", 2)
+	loggedAt, err := time.Parse("20060102T150405", parts[0][0:len(parts[0])-1])
+	if err != nil {
+		return log, err
+	}
+	log.LoggedAt = loggedAt
+	log.Message = parts[1]
+	return log, nil
+}
+
+// LastLog returns the message that was last logged in the history.
+func (vs *VehicleStore) LastLog() (LogEntry, error) {
+	logs, err := vs.store.ZRange(vs.opts.HistorySortedSet, -1, -1).Result()
+	if err != nil {
+		return LogEntry{}, err
+	}
+	return unmarshalLogEntry(logs[0])
+}
+
+// CountLog returns the number of log entries.
+func (vs *VehicleStore) CountLog() (int, error) {
+	count, err := vs.store.ZCount(vs.opts.HistorySortedSet, "0", "0").Result()
+	return int(count), err
 }

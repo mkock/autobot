@@ -21,6 +21,8 @@ var inFile = flag.String("infile", "", "DMR XML file in UTF-8 format")
 var vin = flag.String("vin", "", "VIN number to lookup, if any (will not synchronize data)")
 var regNr = flag.String("regnr", "", "Registration number to lookup, if any (will not synchronize data)")
 var debug = flag.Bool("debug", false, "Print CPU count, goroutine count and memory usage every 10 seconds")
+var clear = flag.Bool("clear", false, "Clears the entire vehicle store")
+var status = flag.Bool("status", false, "Displays the last synchronisation log")
 
 func monitorRuntime() {
 	log.Println("Number of CPUs:", runtime.NumCPU())
@@ -59,7 +61,8 @@ func main() {
 	if *vin != "" {
 		vehicle, err := store.LookupByVIN(*vin)
 		if err != nil {
-			log.Fatalf("unable to lookup VIN %s: %s", *vin, err)
+			fmt.Printf("Unable to lookup VIN %s: %s\n", *vin, err)
+			os.Exit(0)
 		}
 		fmt.Println("Found!")
 		fmt.Println(vehicle.FlexString("\n", "  "))
@@ -67,10 +70,29 @@ func main() {
 	} else if *regNr != "" {
 		vehicle, err := store.LookupByRegNr(*regNr)
 		if err != nil {
-			log.Fatalf("unable to lookup reg. nr. %s: %s", *regNr, err)
+			fmt.Printf("Unable to lookup reg. nr. %s: %s\n", *regNr, err)
+			os.Exit(0)
 		}
 		fmt.Println("Found!")
 		fmt.Println(vehicle.FlexString("\n", "  "))
+		os.Exit(0)
+	} else if *clear {
+		if err := store.Clear(); err != nil {
+			log.Fatal("Unable clear store, manual cleanup required\n")
+		}
+		fmt.Println("Store cleared")
+		os.Exit(0)
+	} else if *status {
+		entries, err := store.CountLog()
+		if err != nil {
+			log.Fatalf("Error while fetching status: %s", err)
+		}
+		fmt.Printf("Status: %d log entries in total. Last entry:\n", entries)
+		entry, err := store.LastLog()
+		if err != nil {
+			log.Fatalf("Error while fetching status: %s", err)
+		}
+		fmt.Println(entry.String())
 		os.Exit(0)
 	}
 
