@@ -3,26 +3,18 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
 	"os"
 	"runtime"
 	"time"
 
+	"github.com/OmniCar/autobot/args"
 	"github.com/OmniCar/autobot/config"
 	"github.com/OmniCar/autobot/dataprovider"
 	"github.com/OmniCar/autobot/dmr"
 	"github.com/OmniCar/autobot/vehiclestore"
 )
-
-var cnfFile = flag.String("cnffile", "config.toml", "Configuration file for FTP connectivity")
-var inFile = flag.String("infile", "", "DMR XML file in UTF-8 format")
-var vin = flag.String("vin", "", "VIN number to lookup, if any (will not synchronize data)")
-var regNr = flag.String("regnr", "", "Registration number to lookup, if any (will not synchronize data)")
-var debug = flag.Bool("debug", false, "Print CPU count, goroutine count and memory usage every 10 seconds")
-var clear = flag.Bool("clear", false, "Clears the entire vehicle store")
-var status = flag.Bool("status", false, "Displays the last synchronisation log")
 
 func monitorRuntime() {
 	log.Println("Number of CPUs:", runtime.NumCPU())
@@ -37,52 +29,56 @@ func monitorRuntime() {
 }
 
 func main() {
-	if *debug {
+	// Parse CLI arguments.
+	args, err := args.ParseCLI()
+	if err != nil {
+		log.Fatalf("Failed to parse CLI arguments: %s", err)
+	}
+	if args.Debug {
 		go monitorRuntime()
 	}
-	flag.Parse()
 
 	// Load and parse configuration file.
-	if *cnfFile == "" {
-		log.Fatalf("need a configuration file")
+	if args.ConfigFile == "" {
+		log.Fatalf("Need a configuration file")
 	}
-	cnf, err := config.NewConfig(*cnfFile)
+	cnf, err := config.NewConfig(args.ConfigFile)
 	if err != nil {
-		log.Fatalf("unable to load configuration file %s", *cnfFile)
+		log.Fatalf("Unable to load configuration file %s", args.ConfigFile)
 	}
 
 	store := vehiclestore.NewVehicleStore(cnf.MemStore, cnf.Sync)
 	if err := store.Open(); err != nil {
-		log.Fatalf("unable to connect to memory store, check your configuration file")
+		log.Fatalf("Unable to connect to memory store, check your configuration file")
 	}
 	defer func() {
 		store.Close()
 	}()
-	if *vin != "" {
-		vehicle, err := store.LookupByVIN(*vin)
+	if args.VIN != "" {
+		vehicle, err := store.LookupByVIN(args.VIN)
 		if err != nil {
-			fmt.Printf("Unable to lookup VIN %s: %s\n", *vin, err)
+			fmt.Printf("Unable to lookup VIN %s: %s\n", args.VIN, err)
 			os.Exit(0)
 		}
 		fmt.Println("Found!")
 		fmt.Println(vehicle.FlexString("\n", "  "))
 		os.Exit(0)
-	} else if *regNr != "" {
-		vehicle, err := store.LookupByRegNr(*regNr)
+	} else if args.RegNr != "" {
+		vehicle, err := store.LookupByRegNr(args.RegNr)
 		if err != nil {
-			fmt.Printf("Unable to lookup reg. nr. %s: %s\n", *regNr, err)
+			fmt.Printf("Unable to lookup reg. nr. %s: %s\n", args.RegNr, err)
 			os.Exit(0)
 		}
 		fmt.Println("Found!")
 		fmt.Println(vehicle.FlexString("\n", "  "))
 		os.Exit(0)
-	} else if *clear {
+	} else if args.Clear {
 		if err := store.Clear(); err != nil {
 			log.Fatal("Unable clear store, manual cleanup required\n")
 		}
 		fmt.Println("Store cleared")
 		os.Exit(0)
-	} else if *status {
+	} else if args.Status {
 		entries, err := store.CountLog()
 		if err != nil {
 			log.Fatalf("Error while fetching status: %s", err)
@@ -97,16 +93,16 @@ func main() {
 	}
 
 	var ptype int
-	if *inFile == "" {
+	if args.SourceFile == "" {
 		fmt.Printf("Using FTP data file at %q\n", cnf.Ftp.Host)
 		ptype = dataprovider.FtpProv
 	} else {
-		fmt.Printf("Using local data file: %s\n", *inFile)
+		fmt.Printf("Using local data file: %s\n", args.SourceFile)
 		ptype = dataprovider.FsProv
 	}
 
 	prov := dataprovider.NewProvider(ptype, cnf)
-	src, err := prov.Provide(*inFile)
+	src, err := prov.Provide(args.SourceFile)
 	if err != nil {
 		log.Fatalf("error during file retrieval: %s", err)
 	}
