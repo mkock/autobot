@@ -13,6 +13,7 @@ import (
 	"github.com/OmniCar/autobot/config"
 	"github.com/OmniCar/autobot/dataprovider"
 	"github.com/OmniCar/autobot/dmr"
+	"github.com/OmniCar/autobot/vehicle"
 	"github.com/OmniCar/autobot/vehiclestore"
 )
 
@@ -55,22 +56,30 @@ func main() {
 		store.Close()
 	}()
 	if args.VIN != "" {
-		vehicle, err := store.LookupByVIN(args.VIN)
+		veh, err := store.LookupByVIN(args.VIN)
 		if err != nil {
 			fmt.Printf("Unable to lookup VIN %s: %s\n", args.VIN, err)
 			os.Exit(0)
 		}
+		if veh == (vehicle.Vehicle{}) {
+			fmt.Printf("No vehicle found with VIN %s", args.VIN)
+			os.Exit(0)
+		}
 		fmt.Println("Found!")
-		fmt.Println(vehicle.FlexString("\n", "  "))
+		fmt.Println(veh.FlexString("\n", "  "))
 		os.Exit(0)
 	} else if args.RegNr != "" {
-		vehicle, err := store.LookupByRegNr(args.RegNr)
+		veh, err := store.LookupByRegNr(args.RegNr)
 		if err != nil {
 			fmt.Printf("Unable to lookup reg. nr. %s: %s\n", args.RegNr, err)
 			os.Exit(0)
 		}
+		if veh == (vehicle.Vehicle{}) {
+			fmt.Printf("No vehicle found with registration number %s", args.RegNr)
+			os.Exit(0)
+		}
 		fmt.Println("Found!")
-		fmt.Println(vehicle.FlexString("\n", "  "))
+		fmt.Println(veh.FlexString("\n", "  "))
 		os.Exit(0)
 	} else if args.Clear {
 		if err := store.Clear(); err != nil {

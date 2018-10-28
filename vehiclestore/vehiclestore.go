@@ -242,7 +242,7 @@ func (vs *VehicleStore) lookup(id, index string) (string, error) {
 // LookupByVIN attempts to lookup a vehicle by its VIN number.
 func (vs *VehicleStore) LookupByVIN(VIN string) (vehicle vehicle.Vehicle, err error) {
 	hash, err := vs.lookup(strings.ToUpper(VIN), vs.opts.VINSortedSet)
-	if err != nil {
+	if err != nil || hash == "" {
 		return
 	}
 	var str string
@@ -255,7 +255,7 @@ func (vs *VehicleStore) LookupByVIN(VIN string) (vehicle vehicle.Vehicle, err er
 // LookupByRegNr attempts to lookup a vehicle by its registration number.
 func (vs *VehicleStore) LookupByRegNr(regNr string) (vehicle vehicle.Vehicle, err error) {
 	hash, err := vs.lookup(strings.ToUpper(regNr), vs.opts.RegNrSortedSet)
-	if err != nil {
+	if err != nil || hash == "" {
 		return
 	}
 	var str string
