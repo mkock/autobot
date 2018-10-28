@@ -239,30 +239,55 @@ func (vs *VehicleStore) lookup(id, index string) (string, error) {
 	return strings.Split(matches[0], ":")[1], nil
 }
 
+// remove removes the member with the given id from the sorted set index of the given name.
+func (vs *VehicleStore) remove(id, index string) error {
+	if _, err := vs.store.ZRem(index, id).Result(); err != nil {
+		return err
+	}
+	return nil
+}
+
 // LookupByVIN attempts to lookup a vehicle by its VIN number.
-func (vs *VehicleStore) LookupByVIN(VIN string) (vehicle vehicle.Vehicle, err error) {
-	hash, err := vs.lookup(strings.ToUpper(VIN), vs.opts.VINSortedSet)
+func (vs *VehicleStore) LookupByVIN(VIN string) (vehicle.Vehicle, error) {
+	val := strings.ToUpper(VIN)
+	hash, err := vs.lookup(val, vs.opts.VINSortedSet)
 	if err != nil || hash == "" {
-		return
+		return vehicle.Vehicle{}, err
 	}
-	var str string
-	if str, err = vs.store.HGet(vs.opts.VehicleMap, hash).Result(); err != nil {
-		return
-	}
-	return unserializeVehicle(str)
+	return vs.lookupVehicle(hash, val, vs.opts.VINSortedSet)
 }
 
 // LookupByRegNr attempts to lookup a vehicle by its registration number.
-func (vs *VehicleStore) LookupByRegNr(regNr string) (vehicle vehicle.Vehicle, err error) {
-	hash, err := vs.lookup(strings.ToUpper(regNr), vs.opts.RegNrSortedSet)
+func (vs *VehicleStore) LookupByRegNr(regNr string) (vehicle.Vehicle, error) {
+	val := strings.ToUpper(regNr)
+	hash, err := vs.lookup(val, vs.opts.RegNrSortedSet)
 	if err != nil || hash == "" {
-		return
+		return vehicle.Vehicle{}, err
 	}
-	var str string
-	if str, err = vs.store.HGet(vs.opts.VehicleMap, hash).Result(); err != nil {
-		return
+	return vs.lookupVehicle(hash, val, vs.opts.RegNrSortedSet)
+}
+
+// lookupVehicle attempts to locate the vehicle with the given hash in the vehicle store.
+// If a vehicle was not found, it will attempt to delete the key from the index that was used for the lookup.
+// The parameters "identifier" and "index" is the registration/VIN number and index name; they are only needed to
+// reconstruct the index key that should be removed.
+func (vs *VehicleStore) lookupVehicle(hash, identifier, index string) (vehicle.Vehicle, error) {
+	exists, err := vs.store.HExists(vs.opts.VehicleMap, hash).Result()
+	if err != nil {
+		return vehicle.Vehicle{}, err
 	}
-	return unserializeVehicle(str)
+	if exists {
+		str, err := vs.store.HGet(vs.opts.VehicleMap, hash).Result()
+		if err != nil {
+			return vehicle.Vehicle{}, err
+		}
+		return unserializeVehicle(str)
+	}
+	// The index returned a hash value, but it does not exist in the vehicle store, so we delete the index.
+	if err := vs.remove(fmt.Sprintf("%s:%s", identifier, hash), index); err != nil {
+		fmt.Printf("Notice: unable to remove disconnected index for vehicle id %s", hash)
+	}
+	return vehicle.Vehicle{}, nil
 }
 
 // Clear clears out the entire vehicle store, including indexes.
