@@ -134,6 +134,7 @@ func (cmd *StatusCommand) Execute(opts []string) error {
 
 // LookupCommand contains options for vehicle lookups using reg.nr. or VIN.
 type LookupCommand struct {
+	Country  string `short:"c" long:"country" description:"Country where vehicle is registered" required:"yes" choice:"DK" choice:"NO"`
 	VIN      string `short:"v" long:"vin" description:"VIN number to lookup, if any (will not synchronize data)"`
 	RegNr    string `short:"r" long:"regnr" description:"Registration number to lookup, if any (will not synchronize data)"`
 	Disabled bool   `short:"d" long:"disabled" description:"Include vehicle in result even if disabled"`
@@ -144,7 +145,7 @@ func (cmd *LookupCommand) Execute(opts []string) error {
 	var (
 		nr     string
 		desc   string
-		lookup func(string, bool) (vehicle.Vehicle, error)
+		lookup func(vehicle.RegCountry, string, bool) (vehicle.Vehicle, error)
 	)
 	if cmd.RegNr != "" {
 		nr = cmd.RegNr
@@ -158,7 +159,7 @@ func (cmd *LookupCommand) Execute(opts []string) error {
 		fmt.Println("Lookup: need VIN or registration number")
 		return nil
 	}
-	veh, err := lookup(nr, cmd.Disabled)
+	veh, err := lookup(vehicle.RegCountryFromString(cmd.Country), nr, cmd.Disabled)
 	if err != nil {
 		return err
 	}

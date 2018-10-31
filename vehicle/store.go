@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -209,12 +210,12 @@ func (vs *Store) syncVehicle(vehicle Vehicle) (bool, error) {
 		return false, err
 	}
 	// Update the VIN index.
-	zVIN := redis.Z{Score: 0, Member: fmt.Sprintf("%s:%s", vehicle.VIN, hash)}
+	zVIN := redis.Z{Score: 0, Member: fmt.Sprintf("%d:%s:%s", vehicle.MetaData.Country, vehicle.VIN, hash)}
 	if _, err = vs.store.ZAdd(vinIndex, zVIN).Result(); err != nil {
 		return false, err
 	}
 	// Update the reg.nr index.
-	zReg := redis.Z{Score: 0, Member: fmt.Sprintf("%s:%s", vehicle.RegNr, hash)}
+	zReg := redis.Z{Score: 0, Member: fmt.Sprintf("%d:%s:%s", vehicle.MetaData.Country, vehicle.RegNr, hash)}
 	if _, err = vs.store.ZAdd(regIndex, zReg).Result(); err != nil {
 		return false, err
 	}
@@ -242,7 +243,7 @@ func (vs *Store) lookup(id, index string) (string, error) {
 	if len(matches) == 0 {
 		return "", nil // No match.
 	}
-	return strings.Split(matches[0], ":")[1], nil
+	return strings.Split(matches[0], ":")[2], nil
 }
 
 // Disable disables the vehicle with the given hash value, if it exists.
@@ -267,8 +268,8 @@ func (vs *Store) remove(id, index string) error {
 }
 
 // LookupByVIN attempts to lookup a vehicle by its VIN number.
-func (vs *Store) LookupByVIN(VIN string, showDisabled bool) (Vehicle, error) {
-	val := strings.ToUpper(VIN)
+func (vs *Store) LookupByVIN(rc RegCountry, VIN string, showDisabled bool) (Vehicle, error) {
+	val := strconv.Itoa(int(rc)) + ":" + strings.ToUpper(VIN)
 	hash, err := vs.lookup(val, vs.opts.VINSortedSet)
 	if err != nil || hash == "" {
 		return Vehicle{}, err
@@ -277,8 +278,8 @@ func (vs *Store) LookupByVIN(VIN string, showDisabled bool) (Vehicle, error) {
 }
 
 // LookupByRegNr attempts to lookup a vehicle by its registration number.
-func (vs *Store) LookupByRegNr(regNr string, showDisabled bool) (Vehicle, error) {
-	val := strings.ToUpper(regNr)
+func (vs *Store) LookupByRegNr(rc RegCountry, regNr string, showDisabled bool) (Vehicle, error) {
+	val := strconv.Itoa(int(rc)) + ":" + strings.ToUpper(regNr)
 	hash, err := vs.lookup(val, vs.opts.RegNrSortedSet)
 	if err != nil || hash == "" {
 		return Vehicle{}, err

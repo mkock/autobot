@@ -70,10 +70,11 @@ That's all there is to it.
 ## TODO
 
 1. ~~Figure out how to efficiently perform REGNO+VIN lookups in Redis~~ Done
-2. Remove values from indexes where the hash no longer refers to a vehicle
+2. ~~Remove values from indexes where the hash no longer refers to a vehicle~~
 3. Add a CLI command that generates an empty config file for the sake of convenience
-4. Add a CLI command for retrieving vehicle data, also for the sake of convenience
+4. ~~Add a CLI command for retrieving vehicle data, also for the sake of convenience~~
 5. Add usage information when called without arguments
+6. ~~Add support for disabling vehicles~~
 
 ## Changelog
 
