@@ -1,4 +1,4 @@
-package vehiclestore
+package vehicle
 
 import (
 	"encoding/json"
@@ -9,12 +9,11 @@ import (
 	"time"
 
 	"github.com/OmniCar/autobot/config"
-	"github.com/OmniCar/autobot/vehicle"
 	"github.com/go-redis/redis"
 )
 
-// VehicleStore represents a Redis-compatible memory store such as Redis or Google Memory Store.
-type VehicleStore struct {
+// Store represents a Redis-compatible memory store such as Redis or Google Memory Store.
+type Store struct {
 	cnf   config.MemStoreConfig
 	opts  config.SyncConfig
 	store *redis.Client
@@ -51,13 +50,13 @@ func (op *syncOp) String() string {
 	return fmt.Sprintf("Sync from %s started: %s, duration: %s. Summary: synced %d of %d vehicles", op.source, op.started.Format("2006-01-02T15:04:05"), op.duration, op.synced, op.processed)
 }
 
-// NewVehicleStore returns a new VehicleStore, which you can then interact with in order to start sync operations etc.
-func NewVehicleStore(storeCnf config.MemStoreConfig, syncCnf config.SyncConfig) *VehicleStore {
-	return &VehicleStore{cnf: storeCnf, opts: syncCnf}
+// NewStore returns a new Store, which you can then interact with in order to start sync operations etc.
+func NewStore(storeCnf config.MemStoreConfig, syncCnf config.SyncConfig) *Store {
+	return &Store{cnf: storeCnf, opts: syncCnf}
 }
 
 // Open connects to the vehicle store.
-func (vs *VehicleStore) Open() error {
+func (vs *Store) Open() error {
 	vs.store = redis.NewClient(&redis.Options{
 		Addr:     fmt.Sprintf("%s:%d", vs.cnf.Host, vs.cnf.Port),
 		Password: vs.cnf.Password,
@@ -70,13 +69,13 @@ func (vs *VehicleStore) Open() error {
 }
 
 // Close disconnects from the memory store.
-func (vs *VehicleStore) Close() error {
+func (vs *Store) Close() error {
 	return vs.store.Close()
 }
 
 // NewSyncOp starts a new synchronization operation and returns its id.
 // Use this id for any further interactions with the operation. Note that his function is not thread-safe.
-func (vs *VehicleStore) NewSyncOp(source string) SyncOpID {
+func (vs *Store) NewSyncOp(source string) SyncOpID {
 	id := SyncOpID(len(vs.ops))
 	op := syncOp{
 		id:        id,
@@ -89,7 +88,7 @@ func (vs *VehicleStore) NewSyncOp(source string) SyncOpID {
 	return id
 }
 
-func (vs *VehicleStore) getOp(id SyncOpID) *syncOp {
+func (vs *Store) getOp(id SyncOpID) *syncOp {
 	// Find the referenced sync op.
 	if int(id) > len(vs.ops)-1 {
 		panic(fmt.Sprintf("no syncOp with id %d", id))
@@ -98,7 +97,7 @@ func (vs *VehicleStore) getOp(id SyncOpID) *syncOp {
 }
 
 // finalize calculates the total duration of the sync operation and pushes a stringified status result to mem-store.
-func (vs *VehicleStore) finalize(id SyncOpID) {
+func (vs *Store) finalize(id SyncOpID) {
 	op := vs.getOp(id)
 	end := time.Now()
 	op.duration = end.Sub(op.started)
@@ -109,7 +108,7 @@ func (vs *VehicleStore) finalize(id SyncOpID) {
 }
 
 // writeToFile is good to have around for debugging purposes.
-func (vs *VehicleStore) writeToFile(vehicles vehicle.List, outFile string) {
+func (vs *Store) writeToFile(vehicles List, outFile string) {
 	out, err := os.Create(outFile)
 	if err != nil {
 		fmt.Printf("Unable to open output file %v for writing.\n", outFile)
@@ -135,10 +134,10 @@ func (vs *VehicleStore) writeToFile(vehicles vehicle.List, outFile string) {
 // channel "done". Along the way, it keeps track of the number of vehicles that were processed and synchronized.
 // This data is stored on the syncOp.
 // @TODO Consider running "syncVehicle" in a go routine for faster execution speed.
-func (vs *VehicleStore) Sync(id SyncOpID, vehicles <-chan vehicle.Vehicle, done <-chan bool) error {
+func (vs *Store) Sync(id SyncOpID, vehicles <-chan Vehicle, done <-chan bool) error {
 	op := vs.getOp(id)
-	// @TODO Remove vehicle.List and stream the vehicles directly to a file?
-	var vlist vehicle.List = make(map[uint64]vehicle.Vehicle) // For keeping track of vehicles.
+	// @TODO Remove List and stream the vehicles directly to a file?
+	var vlist List = make(map[uint64]Vehicle) // For keeping track of vehicles.
 	for {
 		select {
 		case vehicle := <-vehicles:
@@ -163,7 +162,7 @@ func (vs *VehicleStore) Sync(id SyncOpID, vehicles <-chan vehicle.Vehicle, done 
 }
 
 // serializeVehicle converts the given Vehicle to a string using JSON encoding.
-func serializeVehicle(vehicle vehicle.Vehicle) (string, error) {
+func serializeVehicle(vehicle Vehicle) (string, error) {
 	b, err := json.Marshal(vehicle)
 	if err != nil {
 		return "", err
@@ -172,8 +171,8 @@ func serializeVehicle(vehicle vehicle.Vehicle) (string, error) {
 }
 
 // unserializeVehicle converts the given string to a Vehicle using JSON decoding.
-func unserializeVehicle(str string) (vehicle.Vehicle, error) {
-	var vehicle vehicle.Vehicle
+func unserializeVehicle(str string) (Vehicle, error) {
+	var vehicle Vehicle
 	if err := json.Unmarshal([]byte(str), &vehicle); err != nil {
 		return vehicle, err
 	}
@@ -182,7 +181,7 @@ func unserializeVehicle(str string) (vehicle.Vehicle, error) {
 
 // syncVehicle synchronizes a single Vehicle with the memory store.
 // It returns a bool indicating whether the vehicle was added/updated or not.
-func (vs *VehicleStore) syncVehicle(vehicle vehicle.Vehicle) (bool, error) {
+func (vs *Store) syncVehicle(vehicle Vehicle) (bool, error) {
 	mapName := vs.opts.VehicleMap
 	vinIndex := vs.opts.VINSortedSet
 	regIndex := vs.opts.RegNrSortedSet
@@ -216,7 +215,7 @@ func (vs *VehicleStore) syncVehicle(vehicle vehicle.Vehicle) (bool, error) {
 }
 
 // Status returns a status for the sync operation with the given id.
-func (vs *VehicleStore) Status(id SyncOpID) string {
+func (vs *Store) Status(id SyncOpID) string {
 	op := vs.getOp(id)
 	return op.String()
 }
@@ -224,7 +223,7 @@ func (vs *VehicleStore) Status(id SyncOpID) string {
 // lookup attempts to lookup the given id (VIN or registration number) in the given index.
 // The id type must match the index which is being used, otherwise there will never be a match.
 // If a match was found, the vehicle hash is returned.
-func (vs *VehicleStore) lookup(id, index string) (string, error) {
+func (vs *Store) lookup(id, index string) (string, error) {
 	zBy := redis.ZRangeBy{
 		Min: fmt.Sprintf("[%s", id),
 		Max: fmt.Sprintf("[%s\xff", id),
@@ -240,7 +239,7 @@ func (vs *VehicleStore) lookup(id, index string) (string, error) {
 }
 
 // remove removes the member with the given id from the sorted set index of the given name.
-func (vs *VehicleStore) remove(id, index string) error {
+func (vs *Store) remove(id, index string) error {
 	if _, err := vs.store.ZRem(index, id).Result(); err != nil {
 		return err
 	}
@@ -248,21 +247,21 @@ func (vs *VehicleStore) remove(id, index string) error {
 }
 
 // LookupByVIN attempts to lookup a vehicle by its VIN number.
-func (vs *VehicleStore) LookupByVIN(VIN string) (vehicle.Vehicle, error) {
+func (vs *Store) LookupByVIN(VIN string) (Vehicle, error) {
 	val := strings.ToUpper(VIN)
 	hash, err := vs.lookup(val, vs.opts.VINSortedSet)
 	if err != nil || hash == "" {
-		return vehicle.Vehicle{}, err
+		return Vehicle{}, err
 	}
 	return vs.lookupVehicle(hash, val, vs.opts.VINSortedSet)
 }
 
 // LookupByRegNr attempts to lookup a vehicle by its registration number.
-func (vs *VehicleStore) LookupByRegNr(regNr string) (vehicle.Vehicle, error) {
+func (vs *Store) LookupByRegNr(regNr string) (Vehicle, error) {
 	val := strings.ToUpper(regNr)
 	hash, err := vs.lookup(val, vs.opts.RegNrSortedSet)
 	if err != nil || hash == "" {
-		return vehicle.Vehicle{}, err
+		return Vehicle{}, err
 	}
 	return vs.lookupVehicle(hash, val, vs.opts.RegNrSortedSet)
 }
@@ -271,15 +270,15 @@ func (vs *VehicleStore) LookupByRegNr(regNr string) (vehicle.Vehicle, error) {
 // If a vehicle was not found, it will attempt to delete the key from the index that was used for the lookup.
 // The parameters "identifier" and "index" is the registration/VIN number and index name; they are only needed to
 // reconstruct the index key that should be removed.
-func (vs *VehicleStore) lookupVehicle(hash, identifier, index string) (vehicle.Vehicle, error) {
+func (vs *Store) lookupVehicle(hash, identifier, index string) (Vehicle, error) {
 	exists, err := vs.store.HExists(vs.opts.VehicleMap, hash).Result()
 	if err != nil {
-		return vehicle.Vehicle{}, err
+		return Vehicle{}, err
 	}
 	if exists {
 		str, err := vs.store.HGet(vs.opts.VehicleMap, hash).Result()
 		if err != nil {
-			return vehicle.Vehicle{}, err
+			return Vehicle{}, err
 		}
 		return unserializeVehicle(str)
 	}
@@ -287,11 +286,11 @@ func (vs *VehicleStore) lookupVehicle(hash, identifier, index string) (vehicle.V
 	if err := vs.remove(fmt.Sprintf("%s:%s", identifier, hash), index); err != nil {
 		fmt.Printf("Notice: unable to remove disconnected index for vehicle id %s", hash)
 	}
-	return vehicle.Vehicle{}, nil
+	return Vehicle{}, nil
 }
 
 // Clear clears out the entire vehicle store, including indexes.
-func (vs *VehicleStore) Clear() error {
+func (vs *Store) Clear() error {
 	var err error
 	_, err = vs.store.Del(vs.opts.VehicleMap).Result()
 	if err != nil {
@@ -309,7 +308,7 @@ func (vs *VehicleStore) Clear() error {
 }
 
 // Log logs a message to the vehicle store history together with the logging time.
-func (vs *VehicleStore) Log(msg string) error {
+func (vs *Store) Log(msg string) error {
 	now := time.Now()
 	zLog := redis.Z{Score: 0, Member: now.Format("20060102T150405") + ":" + msg}
 	if _, err := vs.store.ZAdd(vs.opts.HistorySortedSet, zLog).Result(); err != nil {
@@ -336,7 +335,7 @@ func unmarshalLogEntry(entry string) (LogEntry, error) {
 }
 
 // LastLog returns the message that was last logged in the history.
-func (vs *VehicleStore) LastLog() (LogEntry, error) {
+func (vs *Store) LastLog() (LogEntry, error) {
 	logs, err := vs.store.ZRange(vs.opts.HistorySortedSet, -1, -1).Result()
 	if err != nil {
 		return LogEntry{}, err
@@ -345,7 +344,7 @@ func (vs *VehicleStore) LastLog() (LogEntry, error) {
 }
 
 // CountLog returns the number of log entries.
-func (vs *VehicleStore) CountLog() (int, error) {
+func (vs *Store) CountLog() (int, error) {
 	count, err := vs.store.ZCount(vs.opts.HistorySortedSet, "0", "0").Result()
 	return int(count), err
 }

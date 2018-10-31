@@ -6,9 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mitchellh/hashstructure"
-
 	"github.com/OmniCar/autobot/vehicle"
+	"github.com/mitchellh/hashstructure"
 )
 
 // XMLParser represents an XML parser.

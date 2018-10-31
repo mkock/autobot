@@ -10,15 +10,14 @@ import (
 	"github.com/OmniCar/autobot/dataprovider"
 	"github.com/OmniCar/autobot/dmr"
 	"github.com/OmniCar/autobot/vehicle"
-	"github.com/OmniCar/autobot/vehiclestore"
 	"github.com/jessevdk/go-flags"
 )
 
 var (
-	parser     *flags.Parser              // Initialised in init.
-	globalOpts *Options                   // Initialised in init.
-	conf       config.Config              // Initialised in bootstrap.
-	store      *vehiclestore.VehicleStore // Initialised in bootstrap.
+	parser     *flags.Parser  // Initialised in init.
+	globalOpts *Options       // Initialised in init.
+	conf       config.Config  // Initialised in bootstrap.
+	store      *vehicle.Store // Initialised in bootstrap.
 )
 
 // init (called automatically) sets up the CLI parser.
@@ -185,8 +184,9 @@ func bootstrap(cmd flags.Commander, args []string) error {
 	if err != nil {
 		return err
 	}
+
 	// Connect to the vehicle store.
-	store = vehiclestore.NewVehicleStore(conf.MemStore, conf.Sync)
+	store = vehicle.NewStore(conf.MemStore, conf.Sync)
 	if err := store.Open(); err != nil {
 		return err
 	}
