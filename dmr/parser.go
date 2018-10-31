@@ -35,7 +35,7 @@ func (p *XMLParser) ParseExcerpt(id int, lines <-chan []string, parsed chan<- ve
 				continue
 			}
 			vehicle := vehicle.Vehicle{
-				MetaData:     vehicle.Meta{Source: stat.Info.Source, Ident: stat.Ident, LastUpdated: time.Now()},
+				MetaData:     vehicle.Meta{Source: stat.Info.Source, Ident: stat.Ident, LastUpdated: time.Now(), Disabled: false},
 				RegNr:        strings.ToUpper(stat.RegNo),
 				VIN:          strings.ToUpper(stat.Info.VIN),
 				Brand:        vehicle.PrettyBrandName(stat.Info.Designation.BrandTypeName),

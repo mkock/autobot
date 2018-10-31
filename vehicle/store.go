@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -179,26 +178,34 @@ func unserializeVehicle(str string) (Vehicle, error) {
 	return vehicle, nil
 }
 
+// storeVehicle stores any changes made to the vehicle.
+// Note: for now, this function assumes that changes were made only to the metadata. If the vehicle base data
+// is changed, we need to generate a new hash and update the indexes.
+func (vs *Store) storeVehicle(vehicle Vehicle) error {
+	val, err := serializeVehicle(vehicle)
+	if err != nil {
+		return err
+	}
+	// Store the vehicle.
+	hash := HashAsKey(vehicle.MetaData.Hash)
+	if _, err = vs.store.HSet(vs.opts.VehicleMap, hash, val).Result(); err != nil {
+		return err
+	}
+	return nil
+}
+
 // syncVehicle synchronizes a single Vehicle with the memory store.
 // It returns a bool indicating whether the vehicle was added/updated or not.
 func (vs *Store) syncVehicle(vehicle Vehicle) (bool, error) {
 	mapName := vs.opts.VehicleMap
 	vinIndex := vs.opts.VINSortedSet
 	regIndex := vs.opts.RegNrSortedSet
-	hash := strconv.FormatUint(vehicle.MetaData.Hash, 10)
+	hash := HashAsKey(vehicle.MetaData.Hash)
 	exists, err := vs.store.HExists(mapName, hash).Result()
-	if err != nil {
+	if err != nil || exists {
 		return false, err
 	}
-	if exists {
-		return false, nil
-	}
-	val, err := serializeVehicle(vehicle)
-	if err != nil {
-		return false, err
-	}
-	// Store the vehicle.
-	if _, err = vs.store.HSet(mapName, hash, val).Result(); err != nil {
+	if err := vs.storeVehicle(vehicle); err != nil {
 		return false, err
 	}
 	// Update the VIN index.
@@ -238,6 +245,19 @@ func (vs *Store) lookup(id, index string) (string, error) {
 	return strings.Split(matches[0], ":")[1], nil
 }
 
+// Disable disables the vehicle with the given hash value, if it exists.
+func (vs *Store) Disable(hash string) error {
+	vehicle, err := vs.lookupVehicleSimple(hash)
+	if err != nil {
+		return err
+	}
+	if vehicle == (Vehicle{}) {
+		return fmt.Errorf("Store: no vehicle with hash %s", hash)
+	}
+	vehicle.MetaData.Disabled = true
+	return vs.storeVehicle(vehicle)
+}
+
 // remove removes the member with the given id from the sorted set index of the given name.
 func (vs *Store) remove(id, index string) error {
 	if _, err := vs.store.ZRem(index, id).Result(); err != nil {
@@ -247,30 +267,27 @@ func (vs *Store) remove(id, index string) error {
 }
 
 // LookupByVIN attempts to lookup a vehicle by its VIN number.
-func (vs *Store) LookupByVIN(VIN string) (Vehicle, error) {
+func (vs *Store) LookupByVIN(VIN string, showDisabled bool) (Vehicle, error) {
 	val := strings.ToUpper(VIN)
 	hash, err := vs.lookup(val, vs.opts.VINSortedSet)
 	if err != nil || hash == "" {
 		return Vehicle{}, err
 	}
-	return vs.lookupVehicle(hash, val, vs.opts.VINSortedSet)
+	return vs.lookupVehicle(hash, showDisabled, val, vs.opts.VINSortedSet)
 }
 
 // LookupByRegNr attempts to lookup a vehicle by its registration number.
-func (vs *Store) LookupByRegNr(regNr string) (Vehicle, error) {
+func (vs *Store) LookupByRegNr(regNr string, showDisabled bool) (Vehicle, error) {
 	val := strings.ToUpper(regNr)
 	hash, err := vs.lookup(val, vs.opts.RegNrSortedSet)
 	if err != nil || hash == "" {
 		return Vehicle{}, err
 	}
-	return vs.lookupVehicle(hash, val, vs.opts.RegNrSortedSet)
+	return vs.lookupVehicle(hash, showDisabled, val, vs.opts.RegNrSortedSet)
 }
 
-// lookupVehicle attempts to locate the vehicle with the given hash in the vehicle store.
-// If a vehicle was not found, it will attempt to delete the key from the index that was used for the lookup.
-// The parameters "identifier" and "index" is the registration/VIN number and index name; they are only needed to
-// reconstruct the index key that should be removed.
-func (vs *Store) lookupVehicle(hash, identifier, index string) (Vehicle, error) {
+// lookupVehicleSimple performs a vehicle lookup without any other processing.
+func (vs *Store) lookupVehicleSimple(hash string) (Vehicle, error) {
 	exists, err := vs.store.HExists(vs.opts.VehicleMap, hash).Result()
 	if err != nil {
 		return Vehicle{}, err
@@ -282,11 +299,28 @@ func (vs *Store) lookupVehicle(hash, identifier, index string) (Vehicle, error) 
 		}
 		return unserializeVehicle(str)
 	}
-	// The index returned a hash value, but it does not exist in the vehicle store, so we delete the index.
-	if err := vs.remove(fmt.Sprintf("%s:%s", identifier, hash), index); err != nil {
-		fmt.Printf("Notice: unable to remove disconnected index for vehicle id %s", hash)
+	return Vehicle{}, err
+}
+
+// lookupVehicle attempts to locate the vehicle with the given hash in the vehicle store.
+// If a vehicle was not found, it will attempt to delete the key from the index that was used for the lookup.
+// The parameters "identifier" and "index" is the registration/VIN number and index name; they are only needed to
+// reconstruct the index key that should be removed.
+// Disabled vehicles will be treated as if they don't exist.
+func (vs *Store) lookupVehicle(hash string, showDisabled bool, identifier, index string) (Vehicle, error) {
+	vehicle, err := vs.lookupVehicleSimple(hash)
+	if err != nil {
+		return vehicle, err
 	}
-	return Vehicle{}, nil
+	if vehicle == (Vehicle{}) {
+		// The index returned a hash value, but it does not exist in the vehicle store, so we delete the index.
+		if err := vs.remove(fmt.Sprintf("%s:%s", identifier, hash), index); err != nil {
+			fmt.Printf("Notice: unable to remove disconnected index for vehicle id %s", hash)
+		}
+	} else if vehicle.MetaData.Disabled && !showDisabled {
+		return Vehicle{}, nil
+	}
+	return vehicle, nil
 }
 
 // Clear clears out the entire vehicle store, including indexes.

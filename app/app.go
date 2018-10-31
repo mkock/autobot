@@ -24,10 +24,11 @@ var (
 func init() {
 	// Setup commands.
 	var (
-		syncCmd   SyncCommand
-		clearCmd  ClearCommand
-		statusCmd StatusCommand
-		lookupCmd LookupCommand
+		syncCmd    SyncCommand
+		clearCmd   ClearCommand
+		statusCmd  StatusCommand
+		lookupCmd  LookupCommand
+		disableCmd DisableCommand
 	)
 	globalOpts = &Options{}
 	parser = flags.NewParser(globalOpts, flags.Default)
@@ -36,6 +37,7 @@ func init() {
 	parser.AddCommand("clear", "clear", "clears the vehicle store of all vehicles", &clearCmd)
 	parser.AddCommand("status", "status", "displays a short status of the vehicle store", &statusCmd)
 	parser.AddCommand("lookup", "vehicle lookup", "performs a vehicle lookup, by VIN or registration number", &lookupCmd)
+	parser.AddCommand("disable", "vehicle disabling", "disables a vehicle so it won't appear in lookups", &disableCmd)
 }
 
 func monitorRuntime() {
@@ -63,7 +65,6 @@ type SyncCommand struct {
 
 // Execute runs the command.
 func (cmd *SyncCommand) Execute(opts []string) error {
-	fmt.Println("Executing SyncCommand!")
 	if cmd.Debug {
 		go monitorRuntime()
 	}
@@ -105,7 +106,6 @@ type ClearCommand struct {
 
 // Execute runs the command.
 func (cmd *ClearCommand) Execute(opts []string) error {
-	fmt.Println("Executing ClearCommand!")
 	if err := store.Clear(); err != nil {
 		return err
 	}
@@ -119,7 +119,6 @@ type StatusCommand struct {
 
 // Execute runs the command.
 func (cmd *StatusCommand) Execute(opts []string) error {
-	fmt.Println("Executing StatusCommand!")
 	entries, err := store.CountLog()
 	if err != nil {
 		return err
@@ -135,17 +134,17 @@ func (cmd *StatusCommand) Execute(opts []string) error {
 
 // LookupCommand contains options for vehicle lookups using reg.nr. or VIN.
 type LookupCommand struct {
-	VIN   string `short:"v" long:"vin" description:"VIN number to lookup, if any (will not synchronize data)"`
-	RegNr string `short:"r" long:"regnr" description:"Registration number to lookup, if any (will not synchronize data)"`
+	VIN      string `short:"v" long:"vin" description:"VIN number to lookup, if any (will not synchronize data)"`
+	RegNr    string `short:"r" long:"regnr" description:"Registration number to lookup, if any (will not synchronize data)"`
+	Disabled bool   `short:"d" long:"disabled" description:"Include vehicle in result even if disabled"`
 }
 
 // Execute is called by go-flags and thus bootstraps the LookupCommand.
 func (cmd *LookupCommand) Execute(opts []string) error {
-	fmt.Println("Executing LookupCommand!")
 	var (
 		nr     string
 		desc   string
-		lookup func(string) (vehicle.Vehicle, error)
+		lookup func(string, bool) (vehicle.Vehicle, error)
 	)
 	if cmd.RegNr != "" {
 		nr = cmd.RegNr
@@ -159,16 +158,27 @@ func (cmd *LookupCommand) Execute(opts []string) error {
 		fmt.Println("Lookup: need VIN or registration number")
 		return nil
 	}
-	veh, err := lookup(nr)
+	veh, err := lookup(nr, cmd.Disabled)
 	if err != nil {
 		return err
 	}
 	if veh == (vehicle.Vehicle{}) {
-		fmt.Printf("No vehicle found with %s %s", desc, nr)
+		fmt.Printf("No vehicle found with %s %s\n", desc, nr)
+		return nil
 	}
 	fmt.Println("Found!")
 	fmt.Println(veh.FlexString("\n", "  "))
 	return nil
+}
+
+// DisableCommand disables a vehicle so it won't appear in lookups.
+type DisableCommand struct {
+	Hash string `short:"h" long:"hash" description:"Hash of vehicle to disable"`
+}
+
+// Execute runs the disable command.
+func (cmd *DisableCommand) Execute(opts []string) error {
+	return store.Disable(cmd.Hash)
 }
 
 // loadConfig loads the TOML configuration file with the specified name.

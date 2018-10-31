@@ -2,6 +2,7 @@ package vehicle
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -15,6 +16,7 @@ type Meta struct {
 	Source      string
 	Ident       uint64
 	LastUpdated time.Time
+	Disabled    bool
 }
 
 // Vehicle contains the core vehicle data that Autobot manages.
@@ -37,7 +39,7 @@ func (v Vehicle) String() string {
 // FlexString returns a stringified multi-line representation of the Vehicle data structure.
 func (v Vehicle) FlexString(lb, leftPad string) string {
 	var txt strings.Builder
-	fmt.Fprintf(&txt, "#%d%s", v.MetaData.Hash, lb)
+	fmt.Fprintf(&txt, "#%d (%s)%s", v.MetaData.Hash, DisabledAsString(v.MetaData.Disabled), lb)
 	fmt.Fprintf(&txt, "%sIdent: %d%s", leftPad, v.MetaData.Ident, lb)
 	fmt.Fprintf(&txt, "%sRegNr: %s%s", leftPad, v.RegNr, lb)
 	fmt.Fprintf(&txt, "%sVIN: %s%s", leftPad, v.VIN, lb)
@@ -60,6 +62,19 @@ func PrettyBrandName(brand string) string {
 // PrettyFuelType normalizes fuel-type by capitalizing the first letter only.
 func PrettyFuelType(ft string) string {
 	return strings.Title(strings.ToLower(ft))
+}
+
+// HashAsKey converts the given hash value into a string that can be used as key in the vehicle store.
+func HashAsKey(hash uint64) string {
+	return strconv.FormatUint(hash, 10)
+}
+
+// DisabledAsString returns a stringified version of the Disabled field.
+func DisabledAsString(status bool) string {
+	if status {
+		return "Disabled"
+	}
+	return "Active"
 }
 
 // Loader is the interface that each service must satisfy in order to provide vehicle data.
