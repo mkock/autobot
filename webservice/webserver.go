@@ -7,6 +7,10 @@ import (
 	"time"
 )
 
+const (
+	errJSONEncoding = iota * 100
+)
+
 type status struct {
 	Status string `json:"status"`
 	Uptime string `json:"uptime"`
@@ -50,7 +54,7 @@ func (srv *WebServer) returnStatus(w http.ResponseWriter, r *http.Request) {
 	s := status{"running", uptime.String()}
 	bytes, err := json.Marshal(s)
 	if err != nil {
-		srv.JSONError(w, APIError{http.StatusInternalServerError, 100, err.Error()})
+		srv.JSONError(w, APIError{http.StatusInternalServerError, errJSONEncoding, err.Error()})
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
