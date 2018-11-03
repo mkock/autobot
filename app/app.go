@@ -10,6 +10,7 @@ import (
 	"github.com/OmniCar/autobot/dataprovider"
 	"github.com/OmniCar/autobot/dmr"
 	"github.com/OmniCar/autobot/vehicle"
+	"github.com/OmniCar/autobot/webservice"
 	"github.com/jessevdk/go-flags"
 )
 
@@ -29,6 +30,7 @@ func init() {
 		statusCmd  StatusCommand
 		lookupCmd  LookupCommand
 		disableCmd DisableCommand
+		serveCmd   ServeCommand
 	)
 	globalOpts = &Options{}
 	parser = flags.NewParser(globalOpts, flags.Default)
@@ -38,6 +40,7 @@ func init() {
 	parser.AddCommand("status", "status", "displays a short status of the vehicle store", &statusCmd)
 	parser.AddCommand("lookup", "vehicle lookup", "performs a vehicle lookup, by VIN or registration number", &lookupCmd)
 	parser.AddCommand("disable", "vehicle disabling", "disables a vehicle so it won't appear in lookups", &disableCmd)
+	parser.AddCommand("serve", "serve", "starts autobot as a web server", &serveCmd)
 }
 
 func monitorRuntime() {
@@ -55,6 +58,22 @@ func monitorRuntime() {
 // Options contains command-line arguments parsed upon application initialisation.
 type Options struct {
 	ConfigFile string `short:"c" long:"config-file" required:"yes" default:"config.toml" description:"Application configuration file in TOML format"`
+}
+
+// ServeCommand is responsible for initialising and booting up a web server that supports much of the same functionality
+// that is also provided via the CLI.
+type ServeCommand struct {
+	Port uint `short:"p" long:"port" default:"1826" description:"Port number to listen on, defaults to 1826"`
+}
+
+// Execute runs the web server. It does not return unless the web server stops functioning.
+func (cmd *ServeCommand) Execute(opts []string) error {
+	api := webservice.New()
+	fmt.Printf("Serving on port %d\n", cmd.Port)
+	if err := api.Serve(cmd.Port); err != nil {
+		return err
+	}
+	return nil
 }
 
 // SyncCommand contains options for synchronising the vehicle store with an external source.
@@ -213,6 +232,9 @@ func bootstrap(cmd flags.Commander, args []string) error {
 func Start() error {
 	// This will run the command that matches the command-line options.
 	if _, err := parser.Parse(); err != nil {
+		if err.(*flags.Error).Type == flags.ErrHelp {
+			return nil // This is to avoid help messages from being printed twice.
+		}
 		return err
 	}
 	return nil

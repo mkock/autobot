@@ -32,6 +32,14 @@ Autobot talks to several external systems and thefore require some configuration
 via a TOML file, which controls aspects of FTP connectivity, memory store integration, the actual synchronization
 algorithm etc.
 
+## API (Planned)
+
+- `GET /` returns a simple status, ie. uptime etc.
+- `GET /vehiclestore/status` returns a status for the vehicle store, ie. last sync time and number of vehicles.
+- `GET /lookup` looks up a vehicle by hash value or a combination of country and registration- or VIN number.
+- `PATCH /vehicle` disables/enables a vehicle by hash value.
+- `PUT /vehicle` updates a vehicle's master data
+
 ## Cache Internals
 
 Redis / Google Memory Store is used for caching of vehicles. Vehicle lookups are supported via VIN and registration
@@ -69,12 +77,14 @@ That's all there is to it.
 
 ## TODO
 
-1. ~~Figure out how to efficiently perform REGNO+VIN lookups in Redis~~ Done
-2. ~~Remove values from indexes where the hash no longer refers to a vehicle~~
+1. ~~Figure out how to efficiently perform REGNO+VIN lookups in Redis~~ _Done_
+2. ~~Remove values from indexes where the hash no longer refers to a vehicle~~ _Done_
 3. Add a CLI command that generates an empty config file for the sake of convenience
-4. ~~Add a CLI command for retrieving vehicle data, also for the sake of convenience~~
+4. ~~Add a CLI command for retrieving vehicle data, also for the sake of convenience~~ _Done_
 5. Add usage information when called without arguments
-6. ~~Add support for disabling vehicles~~
+6. ~~Add support for disabling vehicles~~ _Done_
+7. Build a simple HTTP API with support for lookups and vehicle manipulation _WIP_
+8. Switch from Go's builtin http package to Gin and add request logging, central error handling etc.
 
 ## Changelog
 
