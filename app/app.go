@@ -68,7 +68,7 @@ type ServeCommand struct {
 
 // Execute runs the web server. It does not return unless the web server stops functioning.
 func (cmd *ServeCommand) Execute(opts []string) error {
-	api := webservice.New()
+	api := webservice.New(store)
 	fmt.Printf("Serving on port %d\n", cmd.Port)
 	if err := api.Serve(cmd.Port); err != nil {
 		return err
