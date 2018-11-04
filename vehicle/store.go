@@ -287,6 +287,12 @@ func (vs *Store) LookupByRegNr(rc RegCountry, regNr string, showDisabled bool) (
 	return vs.lookupVehicle(hash, showDisabled, val, vs.opts.RegNrSortedSet)
 }
 
+// LookupByHash performs a vehicle lookup by hash value, without side effects. Ie. it doesn't attempt to clear
+// any indexes if no vehicle was found.
+func (vs *Store) LookupByHash(hash string) (Vehicle, error) {
+	return vs.lookupVehicleSimple(hash)
+}
+
 // lookupVehicleSimple performs a vehicle lookup without any other processing.
 func (vs *Store) lookupVehicleSimple(hash string) (Vehicle, error) {
 	exists, err := vs.store.HExists(vs.opts.VehicleMap, hash).Result()

@@ -1,6 +1,8 @@
 # Autobot
 
-This is a microservice that provides a small API for looking up vehicle data by license plate and VIN number.
+Autobot is a microservice that provides a small API for looking up vehicle data by license plate, VIN number and
+possibly other vehicle master data.
+
 The purpose of this service, which was developed for OmniCar A/S, is to provide a caching mechanism for vehicle
 lookups, which can be expensive as existing providers often charge a fee per lookup.
 
@@ -24,7 +26,8 @@ key data for the core service:
 
 - The microservice itself is written in Golang, v1.11
 - Data is kept in a memory store: Redis for local development and Google Memory Store when deployed
-- On a more detailed level, TOML is used for configuration files, FTP for DMR integration - others?
+- On a more detailed level, TOML is used for configuration files, FTP for DMR integration and Redis/Memory Store
+  is the main vehicle store and indexing mechanism. The rest is just idiomatic Go :-)
 
 ## Configuration
 
@@ -39,6 +42,18 @@ algorithm etc.
 - `GET /lookup` looks up a vehicle by hash value or a combination of country and registration- or VIN number.
 - `PATCH /vehicle` disables/enables a vehicle by hash value.
 - `PUT /vehicle` updates a vehicle's master data
+
+## Package Structure
+
+- `config` - contains app configuration and a loader that reads configuration data from a local TOML file.
+- `vehicle` - contains the Vehicle entity and related functions, plus the implementation of the vehicle store.
+- `dataprovider` - contains abstractions and implementations for loading data from varying sources, currently ftp
+  and the local file system.
+- `dmr` - contains the integration with DMR, the Danish Motor Registry: parsers and data representations.
+- `app` - the entrance to the application itself: command line parser and runner that will both execute CLI commands
+  and control the webservice.
+- `webservice` - this is the webservice part of the application which provides a REST-style HTTP API.
+- `main` - application bootstrapping.
 
 ## Cache Internals
 
@@ -83,8 +98,10 @@ That's all there is to it.
 4. ~~Add a CLI command for retrieving vehicle data, also for the sake of convenience~~ _Done_
 5. Add usage information when called without arguments
 6. ~~Add support for disabling vehicles~~ _Done_
-7. Build a simple HTTP API with support for lookups and vehicle manipulation _WIP_
+7. ~~Build a simple HTTP API with support for lookups~~ _Done_
 8. Switch from Go's builtin http package to Gin and add request logging, central error handling etc.
+9. Allow the user to disable and re-enable vehicles via the API
+10. Allow the user to create revisions of vehicles via the API
 
 ## Changelog
 
@@ -97,6 +114,16 @@ _Why is it called Autobot?_
 Because I like Transformers, and since we're dealing with cars here, the name was evident. Also, the synchronization
 service qualifies as a bot :-)
 
+_Why does Autobot exist?_
+
+It exists to meet a concrete need at my workplace, OmniCar A/S. As a company that deals in service contracts on
+vehicles, there is a regular need for performing lookups based on license plate numbers and other car master data.
+
+These lookups are rarely free - in fact, the services that provide them often charge a fee per lookup. To save money
+on lookups, it becomes prudent to not only cache the results, but also to create our own vehicle database if possible.
+
+Autobot is the answer to these needs.
+
 _Why did you write this in Golang?_
 
 Because Go is perfect for cloud applications such as this one. Also, I'm learning the language and was looking for a
@@ -104,4 +131,4 @@ real-world project to apply my knowledge to. So it's a learning project too.
 
 _Why is this open source?_
 
-It isn't, not yet.
+It isn't, not yet. But it aims to be.

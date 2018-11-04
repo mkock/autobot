@@ -4,14 +4,22 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/OmniCar/autobot/vehicle"
 )
 
 const (
+	dateFmt = "2006-01-02"
+	timeFmt = "2006-01-02T15:04:05"
+)
+
+const (
 	errJSONEncoding = iota * 100
 	errLogRetrieval
+	errLookup
+	errMarshalling
 )
 
 type status struct {
@@ -36,6 +44,24 @@ type APIError struct {
 	HTTPCode int    `json:"-"`
 	Code     int    `json:"code,omitempty"`
 	Message  string `json:"message"`
+}
+
+// APIVehicle is the API representation of Vehicle. It has a JSON representation.
+// Some fields that are only for internal use, are left out, and others are converted into something more readable.
+type APIVehicle struct {
+	Hash         string `json:"hash"`
+	Country      string `json:"country"`
+	RegNr        string `json:"regNr"`
+	VIN          string `json:"vin"`
+	Brand        string `json:"brand"`
+	Model        string `json:"model"`
+	FuelType     string `json:"fuelType"`
+	FirstRegDate string `json:"firstRegDate"`
+}
+
+// vehicleToAPIType converts a vehicle.Vehicle into the local APIVehicle, which is used for the http request/response.
+func vehicleToAPIType(veh vehicle.Vehicle) APIVehicle {
+	return APIVehicle{strconv.FormatUint(veh.MetaData.Hash, 10), vehicle.RegCountryToString(veh.MetaData.Country), veh.RegNr, veh.VIN, veh.Brand, veh.Model, veh.FuelType, veh.FirstRegDate.Format(dateFmt)}
 }
 
 // New initialises a new webserver. You need to start it by calling Serve().
@@ -82,7 +108,6 @@ func (srv *WebServer) returnVehicleStoreStatus(w http.ResponseWriter, r *http.Re
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-
 	c, err := srv.store.CountLog()
 	if err != nil {
 		srv.JSONError(w, APIError{http.StatusInternalServerError, errLogRetrieval, err.Error()})
@@ -104,11 +129,61 @@ func (srv *WebServer) returnVehicleStoreStatus(w http.ResponseWriter, r *http.Re
 	w.Write(bytes)
 }
 
+// lookupVehicle allows vehicle lookups based on hash value, VIN or registration number. A country must always be
+// provided.
+func (srv *WebServer) lookupVehicle(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	country := r.URL.Query().Get("country")
+	hash := r.URL.Query().Get("hash")
+	regNr := r.URL.Query().Get("regnr")
+	vin := r.URL.Query().Get("vin")
+	regCountry := vehicle.RegCountryFromString(country) // For now, we're forcing unknown countries into "DK".
+	if regNr == "" && vin == "" && hash == "" {
+		srv.JSONError(w, APIError{http.StatusBadRequest, errLookup, "Missing query parameter 'hash', 'regnr' or 'vin'"})
+		return
+	}
+	// "country" is required for "regnr" and "vin" only.
+	if country == "" && hash == "" {
+		srv.JSONError(w, APIError{http.StatusBadRequest, errLookup, "Missing query parameter 'country'"})
+		return
+	}
+	var (
+		veh vehicle.Vehicle
+		err error
+	)
+	if hash != "" {
+		veh, err = srv.store.LookupByHash(hash)
+	} else if regNr != "" {
+		veh, err = srv.store.LookupByRegNr(regCountry, regNr, false)
+	} else {
+		veh, err = srv.store.LookupByVIN(regCountry, vin, false)
+	}
+	if err != nil {
+		srv.JSONError(w, APIError{http.StatusInternalServerError, errLookup, err.Error()})
+		return
+	}
+	if veh == (vehicle.Vehicle{}) {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	bytes, err := json.Marshal(vehicleToAPIType(veh))
+	if err != nil {
+		srv.JSONError(w, APIError{http.StatusInternalServerError, errMarshalling, err.Error()})
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(bytes)
+}
+
 // Serve starts the web server.
 // Currently, there is no config for which port to listen on.
 func (srv *WebServer) Serve(port uint) error {
 	http.HandleFunc("/", srv.returnStatus)                                // GET.
 	http.HandleFunc("/vehiclestore/status", srv.returnVehicleStoreStatus) // GET.
+	http.HandleFunc("/lookup", srv.lookupVehicle)                         // GET.
 	srv.startTime = time.Now()
 	return http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 }
