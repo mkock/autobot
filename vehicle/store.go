@@ -136,14 +136,9 @@ func (vs *Store) writeToFile(vehicles List, outFile string) {
 // @TODO Consider running "syncVehicle" in a go routine for faster execution speed.
 func (vs *Store) Sync(id SyncOpID, vehicles <-chan Vehicle, done <-chan bool) error {
 	op := vs.getOp(id)
-	// @TODO Remove List and stream the vehicles directly to a file?
-	var vlist List = make(map[uint64]Vehicle) // For keeping track of vehicles.
 	for {
 		select {
 		case vehicle := <-vehicles:
-			if _, ok := vlist[vehicle.MetaData.Ident]; !ok {
-				vlist[vehicle.MetaData.Ident] = vehicle
-			}
 			op.processed++
 			ok, err := vs.syncVehicle(vehicle)
 			if err != nil {
@@ -154,7 +149,6 @@ func (vs *Store) Sync(id SyncOpID, vehicles <-chan Vehicle, done <-chan bool) er
 			}
 		case <-done:
 			vs.Log(op.String())
-			vs.writeToFile(vlist, "out.csv")
 			vs.finalize(id)
 			return nil
 		}

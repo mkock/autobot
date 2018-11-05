@@ -29,7 +29,7 @@ func (service *Service) processFile(rc io.ReadCloser, numWorkers int, vehicles c
 	lines := make(chan []string, numWorkers)
 
 	// Start the number of workers (parsers) determined by numWorkers.
-	fmt.Printf("Starting %v workers...\n", numWorkers)
+	fmt.Println("Importing...")
 	for i := 0; i < numWorkers; i++ {
 		go parser.ParseExcerpt(i, lines, vehicles, done)
 	}
@@ -73,7 +73,6 @@ func (service *Service) LoadNew(rc io.ReadCloser) (vehicles chan vehicle.Vehicle
 	go func() {
 		for i := 0; i < numWorkers; i++ {
 			_ = <-workerDone
-			// fmt.Printf("Worker %d is done.", wid)
 		}
 		done <- true
 	}()
