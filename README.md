@@ -102,6 +102,7 @@ That's all there is to it.
 8. Switch from Go's builtin http package to Gin and add request logging, central error handling etc.
 9. Allow the user to disable and re-enable vehicles via the API
 10. Allow the user to create revisions of vehicles via the API
+11. Handle `*net.OpError` (network interruptions) during sync, if it makes sense
 
 ## Changelog
 

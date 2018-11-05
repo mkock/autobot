@@ -65,7 +65,8 @@ func (service *Service) processFile(rc io.ReadCloser, numWorkers int, vehicles c
 func (service *Service) LoadNew(rc io.ReadCloser) (vehicles chan vehicle.Vehicle, done chan bool) {
 	// Nr. of workers = cpu core count - 1 for the main go routine. But at least 2.
 	numWorkers := int(math.Max(2.0, float64(runtime.NumCPU()-1)))
-	vehicles, done = make(chan vehicle.Vehicle), make(chan bool)
+	bufSize := numWorkers * numWorkers
+	vehicles, done = make(chan vehicle.Vehicle, bufSize), make(chan bool)
 	workerDone := make(chan int, numWorkers)
 	go service.processFile(rc, numWorkers, vehicles, workerDone)
 
