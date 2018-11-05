@@ -103,6 +103,8 @@ That's all there is to it.
 9. Allow the user to disable and re-enable vehicles via the API
 10. Allow the user to create revisions of vehicles via the API
 11. Handle `*net.OpError` (network interruptions) during sync, if it makes sense
+12. Implement a cleanup job that removes all vehicles from the store that are not present in an index
+13. Add a discrete progress indicator while running sync (CLI only)
 
 ## Changelog
 

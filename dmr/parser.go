@@ -34,7 +34,7 @@ func (p *XMLParser) ParseExcerpt(id int, lines <-chan []string, parsed chan<- ve
 				fmt.Printf("Error: Unable to parse first registration date: %s\n", stat.Info.FirstRegDate)
 				continue
 			}
-			vehicle := vehicle.Vehicle{
+			veh := vehicle.Vehicle{
 				MetaData:     vehicle.Meta{Source: stat.Info.Source, Country: vehicle.DK, Ident: stat.Ident, LastUpdated: time.Now(), Disabled: false},
 				RegNr:        strings.ToUpper(stat.RegNo),
 				VIN:          strings.ToUpper(stat.Info.VIN),
@@ -43,12 +43,12 @@ func (p *XMLParser) ParseExcerpt(id int, lines <-chan []string, parsed chan<- ve
 				FuelType:     vehicle.PrettyFuelType(stat.Info.Engine.Fuel.FuelType),
 				FirstRegDate: regDate,
 			}
-			if hash, err = hashstructure.Hash(vehicle, nil); err != nil {
-				fmt.Printf("Error: Unable to hash Vehicle struct with Ident: %d\n", vehicle.MetaData.Ident)
+			if hash, err = hashstructure.Hash(veh, nil); err != nil {
+				fmt.Printf("Error: Unable to hash Vehicle struct with Ident: %d\n", veh.MetaData.Ident)
 				continue
 			}
-			vehicle.MetaData.Hash = hash
-			parsed <- vehicle
+			veh.MetaData.Hash = hash
+			parsed <- veh
 			keep++
 		}
 		proc++
