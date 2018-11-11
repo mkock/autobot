@@ -16,7 +16,6 @@ import (
 
 // FtpProvider is a data provider that supports file retrieval via FTP.
 type FtpProvider struct {
-	fname  string
 	config config.FtpConfig
 	client *goftp.Client
 }
@@ -27,16 +26,16 @@ func NewFtpProvider(conf config.FtpConfig) *FtpProvider {
 }
 
 // Open establishes the FTP connection.
-func (prov *FtpProvider) Open(fname string) error {
-	prov.fname = fname
+func (prov *FtpProvider) Open() error {
 	dialConf := goftp.Config{
 		User:               prov.config.User,
 		Password:           prov.config.Password,
 		ConnectionsPerHost: 1,
 		Timeout:            12 * time.Hour,
 	}
-	fmt.Printf("Connecting to %s:%d...\n", prov.config.Host, prov.config.Port)
-	client, dialErr := goftp.DialConfig(dialConf, prov.config.Host+":"+strconv.Itoa(prov.config.Port))
+	host := fmt.Sprintf("%s:%d", prov.config.Host, prov.config.Port)
+	log.Printf("Connecting to %s...\n", host)
+	client, dialErr := goftp.DialConfig(dialConf, host)
 	if dialErr != nil {
 		return dialErr
 	}
@@ -54,19 +53,19 @@ func (prov *FtpProvider) Close() error {
 	return prov.client.Close()
 }
 
-// CheckForLatest checks if there are any new files in the same format as the one given and returns the filename
-// of the latest one if possible. Otherwise, the original filename is assigned.
-func (prov *FtpProvider) CheckForLatest() (string, error) {
+// CheckForLatest checks if there are any new files in the same format as the one given and returns
+// the filename of the latest one if possible. Otherwise, the original filename is returned.
+func (prov *FtpProvider) CheckForLatest(fname string) (string, error) {
 	files, err := prov.client.ReadDir(prov.config.Dir)
 	if err != nil {
 		return "", err
 	}
 	if len(files) == 0 {
-		return "", fmt.Errorf("no such file %s", prov.fname)
+		return "", fmt.Errorf("no such file %s", fname)
 	}
-	newest := prov.fname
+	newest := fname
 	if newest == "" {
-		// Date/time is in the past so comparisons will always benefit actual files.
+		// Date/time is far in the past so comparisons will always benefit actual files.
 		newest = fmt.Sprintf("%s20000101-000000.zip", prov.config.FilePrefix)
 	}
 	for _, file := range files {
@@ -74,18 +73,16 @@ func (prov *FtpProvider) CheckForLatest() (string, error) {
 			newest = file.Name()
 		}
 	}
-	prov.fname = newest
 	return newest, nil
 }
 
 // Provide make an FTP file available to autobot by downloading it.
-func (prov *FtpProvider) Provide() (io.ReadCloser, error) {
-	srcPath := filepath.Join(prov.config.Dir, prov.fname)
-	_, statErr := prov.client.Stat(srcPath)
-	if statErr != nil {
+func (prov *FtpProvider) Provide(fname string) (io.ReadCloser, error) {
+	srcPath := filepath.Join(prov.config.Dir, fname)
+	if _, statErr := prov.client.Stat(srcPath); statErr != nil {
 		return nil, statErr
 	}
-	tmp := fmt.Sprintf("/tmp/%s", prov.fname)
+	tmp := fmt.Sprintf("/tmp/%s", fname)
 	w, err := os.Create(tmp)
 	if err != nil {
 		return nil, err
@@ -97,7 +94,7 @@ func (prov *FtpProvider) Provide() (io.ReadCloser, error) {
 		return nil, err
 	}
 	r, err := os.Open(tmp)
-	if isZipped(prov.fname) {
+	if isZipped(fname) {
 		return unzip(r)
 	}
 	return r, nil

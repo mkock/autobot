@@ -53,6 +53,5 @@ func (p *XMLParser) ParseExcerpt(id int, lines <-chan []string, parsed chan<- ve
 		}
 		proc++
 	}
-	fmt.Printf("XML-worker %d finished processing %d excerpts, kept %d\n", id, proc, keep)
 	done <- id
 }

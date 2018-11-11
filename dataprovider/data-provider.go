@@ -19,15 +19,10 @@ const (
 
 // DataProvider is the interface for implementations that fetches files for Autobot to parse.
 type DataProvider interface {
-	Open(fname string) error
+	Open() error
 	Close() error
-	CheckForLatest() (string, error)
-	Provide() (io.ReadCloser, error)
-}
-
-// Provider is the container and accessor for each data provider that satisfies the interface DataProvider.
-type Provider struct {
-	impl DataProvider
+	CheckForLatest(string) (string, error)
+	Provide(string) (io.ReadCloser, error)
 }
 
 // ProvTypeString returns the string representation of the provider type.
@@ -42,35 +37,17 @@ func ProvTypeString(ptype int) string {
 	}
 }
 
-// NewProvider returns a new Provider of the requested type (implementation).
-func NewProvider(ptype int, config config.Config) *Provider {
-	var impl DataProvider
+// NewProvider returns a new provider of the requested type (implementation).
+func NewProvider(ptype int, config config.Config) DataProvider {
 	switch ptype {
 	case FtpProv:
-		impl = NewFtpProvider(config.Ftp)
+		return NewFtpProvider(config.Ftp)
 	case FsProv:
-		impl = NewFileProvider()
+		return NewFileProvider()
+	default:
+		log.Fatalf("No such provider: %d (%s)", ptype, ProvTypeString(ptype))
 	}
-	return &Provider{impl}
-}
-
-// Provide calls the correct DataProvider and returns an open local file, ready to parse.
-func (prov *Provider) Provide(fname string) (io.ReadCloser, error) {
-	if err := prov.impl.Open(fname); err != nil {
-		log.Fatal(err)
-	}
-	fname, _ = prov.impl.CheckForLatest()
-	if fname == "" {
-		return nil, nil
-	}
-	fmt.Println("New stat file detected: " + fname)
-	fmt.Println("Fetching...")
-	var r io.ReadCloser
-	var err error
-	if r, err = prov.impl.Provide(); err != nil {
-		log.Fatal(err)
-	}
-	return r, nil
+	return nil
 }
 
 // isZipped checks if the given file name has the ".zip" extension.

@@ -6,9 +6,10 @@ import (
 
 // Config contains the application configuration.
 type Config struct {
-	Ftp      FtpConfig
-	MemStore MemStoreConfig
-	Sync     SyncConfig
+	Ftp        FtpConfig
+	MemStore   MemStoreConfig
+	WebService WebServiceConfig
+	Sync       SyncConfig
 }
 
 // FtpConfig contains FTP connection configuration.
@@ -29,8 +30,14 @@ type MemStoreConfig struct {
 	DB       int
 }
 
+// WebServiceConfig contains configuration related to the web service and sync scheduler.
+type WebServiceConfig struct {
+	Schedule string
+}
+
 // SyncConfig contains configuration related to the actual synchronization algorithm.
 type SyncConfig struct {
+	SyncedFileString string
 	VehicleMap       string
 	VINSortedSet     string
 	RegNrSortedSet   string

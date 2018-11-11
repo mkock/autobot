@@ -68,8 +68,8 @@ type ServeCommand struct {
 
 // Execute runs the web server. It does not return unless the web server stops functioning.
 func (cmd *ServeCommand) Execute(opts []string) error {
-	api := webservice.New(store)
-	fmt.Printf("Serving on port %d\n", cmd.Port)
+	api := webservice.New(store, conf)
+	log.Printf("Serving on port %d\n", cmd.Port)
 	if err := api.Serve(cmd.Port); err != nil {
 		return err
 	}
@@ -89,15 +89,21 @@ func (cmd *SyncCommand) Execute(opts []string) error {
 	}
 	var ptype int
 	if cmd.SourceFile == "" {
-		fmt.Printf("Using FTP data file at %q\n", conf.Ftp.Host)
+		log.Printf("Using FTP data file at %q\n", conf.Ftp.Host)
 		ptype = dataprovider.FtpProv
 	} else {
-		fmt.Printf("Using local data file: %s\n", cmd.SourceFile)
+		log.Printf("Using local data file: %s\n", cmd.SourceFile)
 		ptype = dataprovider.FsProv
 	}
-
 	prov := dataprovider.NewProvider(ptype, conf)
-	src, err := prov.Provide(cmd.SourceFile)
+	if err := prov.Open(); err != nil {
+		return err
+	}
+	fname, err := prov.CheckForLatest(cmd.SourceFile)
+	if err != nil {
+		return err
+	}
+	src, err := prov.Provide(fname)
 	if err != nil {
 		return err
 	}

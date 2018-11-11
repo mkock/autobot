@@ -2,8 +2,8 @@ package dmr
 
 import (
 	"bufio"
-	"fmt"
 	"io"
+	"log"
 	"math"
 	"runtime"
 	"strings"
@@ -29,7 +29,7 @@ func (service *Service) processFile(rc io.ReadCloser, numWorkers int, vehicles c
 	lines := make(chan []string, numWorkers)
 
 	// Start the number of workers (parsers) determined by numWorkers.
-	fmt.Println("Importing...")
+	log.Println("Importing...")
 	for i := 0; i < numWorkers; i++ {
 		go parser.ParseExcerpt(i, lines, vehicles, done)
 	}

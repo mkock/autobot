@@ -7,25 +7,15 @@ import (
 )
 
 // FileProvider is a data provider that supports local files.
-type FileProvider struct {
-	fname string
-}
+type FileProvider struct{}
 
 // NewFileProvider returns a new FileProvider.
 func NewFileProvider() *FileProvider {
 	return &FileProvider{}
 }
 
-// Open checks if the file is a readable file.
-func (prov *FileProvider) Open(fname string) error {
-	finfo, err := os.Stat(fname)
-	if err != nil {
-		return err
-	}
-	if finfo.IsDir() {
-		return fmt.Errorf("filename %s is a directory", fname)
-	}
-	prov.fname = fname
+// Open does nothing for FileProvider.
+func (prov *FileProvider) Open() error {
 	return nil
 }
 
@@ -34,18 +24,25 @@ func (prov *FileProvider) Close() error {
 	return nil
 }
 
-// CheckForLatest does nothing for FileProvider.
-func (prov *FileProvider) CheckForLatest() (string, error) {
-	return prov.fname, nil
+// CheckForLatest simply checks if the file is readable.
+func (prov *FileProvider) CheckForLatest(fname string) (string, error) {
+	finfo, err := os.Stat(fname)
+	if err != nil {
+		return "", err
+	}
+	if finfo.IsDir() {
+		return "", fmt.Errorf("filename %s is a directory", fname)
+	}
+	return fname, nil
 }
 
 // Provide makes a local file available to autobot.
-func (prov *FileProvider) Provide() (rc io.ReadCloser, err error) {
-	rc, err = os.Open(prov.fname)
+func (prov *FileProvider) Provide(fname string) (rc io.ReadCloser, err error) {
+	rc, err = os.Open(fname)
 	if err != nil {
 		return nil, err
 	}
-	if isZipped(prov.fname) {
+	if isZipped(fname) {
 		return unzip(rc)
 	}
 	return rc, nil

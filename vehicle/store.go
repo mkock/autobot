@@ -47,7 +47,7 @@ func (e LogEntry) String() string {
 
 // String returns a string with some status information on the operation.
 func (op *syncOp) String() string {
-	return fmt.Sprintf("Sync from %s started: %s, duration: %s. Summary: synced %d of %d vehicles", op.source, op.started.Format("2006-01-02T15:04:05"), op.duration.Truncate(time.Second), op.synced, op.processed)
+	return fmt.Sprintf("%s sync status - started: %s, duration: %s. Summary: synced %d of %d vehicles", strings.ToUpper(op.source), op.started.Format("2006-01-02T15:04:05"), op.duration.Truncate(time.Second), op.synced, op.processed)
 }
 
 // NewStore returns a new Store, which you can then interact with in order to start sync operations etc.
@@ -324,19 +324,24 @@ func (vs *Store) lookupVehicle(hash string, showDisabled bool, identifier, index
 	return vehicle, nil
 }
 
-// Clear clears out the entire vehicle store, including indexes.
+// Clear clears out the entire vehicle store, including indexes and the sync history.
 func (vs *Store) Clear() error {
-	var err error
-	_, err = vs.store.Del(vs.opts.VehicleMap).Result()
-	if err != nil {
+	keys := [...]string{vs.opts.SyncedFileString, vs.opts.VehicleMap, vs.opts.RegNrSortedSet, vs.opts.VINSortedSet, vs.opts.HistorySortedSet}
+	if _, err := vs.store.Del(keys[:]...).Result(); err != nil {
 		return err
 	}
-	_, err = vs.store.Del(vs.opts.RegNrSortedSet).Result()
-	if err != nil {
-		return err
-	}
-	_, err = vs.store.Del(vs.opts.VINSortedSet).Result()
-	if err != nil {
+	return nil
+}
+
+// GetLastSynced returns the filename of the last file that was synchronised with the vehicle store.
+// It returns an empty string if there is no filename.
+func (vs *Store) GetLastSynced() (string, error) {
+	return vs.store.Get(vs.opts.SyncedFileString).Result()
+}
+
+// SetLastSynced replaces the logged filename of the file that was last synchronised with the vehicle store.
+func (vs *Store) SetLastSynced(fname string) error {
+	if _, err := vs.store.Set(vs.opts.SyncedFileString, fname, 0).Result(); err != nil {
 		return err
 	}
 	return nil

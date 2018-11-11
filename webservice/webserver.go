@@ -4,9 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 	"time"
 
+	"github.com/OmniCar/autobot/config"
+	"github.com/OmniCar/autobot/scheduler"
 	"github.com/OmniCar/autobot/vehicle"
 )
 
@@ -37,6 +42,7 @@ type storeStatus struct {
 type WebServer struct {
 	startTime time.Time
 	store     *vehicle.Store
+	cnf       config.Config
 }
 
 // APIError is the error returned to clients whenever an internal error has happened.
@@ -65,8 +71,8 @@ func vehicleToAPIType(veh vehicle.Vehicle) APIVehicle {
 }
 
 // New initialises a new webserver. You need to start it by calling Serve().
-func New(store *vehicle.Store) *WebServer {
-	return &WebServer{time.Now(), store}
+func New(store *vehicle.Store, cnf config.Config) *WebServer {
+	return &WebServer{time.Now(), store, cnf}
 }
 
 // JSONError serves the given error as JSON.
@@ -178,12 +184,31 @@ func (srv *WebServer) lookupVehicle(w http.ResponseWriter, r *http.Request) {
 	w.Write(bytes)
 }
 
-// Serve starts the web server.
-// Currently, there is no config for which port to listen on.
-func (srv *WebServer) Serve(port uint) error {
+// setupMux registers all the endpoints that the web server makes available.
+func (srv *WebServer) setupMux() {
 	http.HandleFunc("/", srv.returnStatus)                                // GET.
 	http.HandleFunc("/vehiclestore/status", srv.returnVehicleStoreStatus) // GET.
 	http.HandleFunc("/lookup", srv.lookupVehicle)                         // GET.
+}
+
+// Serve starts the web server. It never returns unless interrupted.
+func (srv *WebServer) Serve(port uint) error {
+	srv.setupMux()
 	srv.startTime = time.Now()
-	return http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
+	// Start a go routine with the web server.
+	go func() {
+		http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
+	}()
+	// Start a go routine with the scheduler.
+	sched := scheduler.New(srv.cnf, srv.store)
+	stop, err := sched.Start()
+	if err != nil {
+		return err // This will happen if the time expression from the config file couldn't be parsed.
+	}
+	// Prepare a channel for service interruption using SIGINT/SIGTERM.
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	<-sigs // Function will halt here until interrupted.
+	stop <- true
+	return nil
 }
