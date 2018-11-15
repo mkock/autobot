@@ -96,7 +96,7 @@ That's all there is to it.
 2. ~~Remove values from indexes where the hash no longer refers to a vehicle~~ _Done_
 3. Add a CLI command that generates an empty config file for the sake of convenience
 4. ~~Add a CLI command for retrieving vehicle data, also for the sake of convenience~~ _Done_
-5. Add usage information when called without arguments
+5. ~~Add usage information when called without arguments~~ _Done_
 6. ~~Add support for disabling vehicles~~ _Done_
 7. ~~Build a simple HTTP API with support for lookups~~ _Done_
 8. Switch from Go's builtin http package to Gin and add request logging, central error handling etc.
@@ -108,7 +108,7 @@ That's all there is to it.
 
 ## Changelog
 
-- _v1.0_ (Oct. 18) Initial version, with synchronization from DMR using Redis/Google Memory Store and data hashing.
+- _v1.0_ (Nov. 18) Initial version, with synchronization from DMR using Redis/Google Memory Store and data hashing.
 
 ## FAQ
 

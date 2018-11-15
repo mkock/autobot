@@ -66,6 +66,11 @@ type ServeCommand struct {
 	Port uint `short:"p" long:"port" default:"1826" description:"Port number to listen on, defaults to 1826"`
 }
 
+// Usage prints help text to the user.
+func (cmd *ServeCommand) Usage() string {
+	return ServeUsage
+}
+
 // Execute runs the web server. It does not return unless the web server stops functioning.
 func (cmd *ServeCommand) Execute(opts []string) error {
 	api := webservice.New(store, conf)
@@ -80,6 +85,11 @@ func (cmd *ServeCommand) Execute(opts []string) error {
 type SyncCommand struct {
 	SourceFile string `short:"f" long:"source-file" description:"DMR XML file in UTF-8 format"`
 	Debug      bool   `short:"d" long:"debug" description:"Debug: print CPU count, goroutine count and memory usage every 10 seconds"`
+}
+
+// Usage prints help text to the user.
+func (cmd *SyncCommand) Usage() string {
+	return SyncUsage
 }
 
 // Execute runs the command.
@@ -129,6 +139,11 @@ type ClearCommand struct {
 	Clear bool `short:"l" long:"clear" description:"Clears the entire vehicle store"`
 }
 
+// Usage prints help text to the user.
+func (cmd *ClearCommand) Usage() string {
+	return ClearUsage
+}
+
 // Execute runs the command.
 func (cmd *ClearCommand) Execute(opts []string) error {
 	if err := store.Clear(); err != nil {
@@ -140,6 +155,11 @@ func (cmd *ClearCommand) Execute(opts []string) error {
 // StatusCommand contains options for displaying the status of the vehicle store.
 type StatusCommand struct {
 	Status bool `short:"s" long:"status" description:"Displays the last synchronisation log"`
+}
+
+// Usage prints help text to the user.
+func (cmd *StatusCommand) Usage() string {
+	return StatusUsage
 }
 
 // Execute runs the command.
@@ -163,6 +183,11 @@ type LookupCommand struct {
 	VIN      string `short:"v" long:"vin" description:"VIN number to lookup, if any (will not synchronize data)"`
 	RegNr    string `short:"r" long:"regnr" description:"Registration number to lookup, if any (will not synchronize data)"`
 	Disabled bool   `short:"d" long:"disabled" description:"Include vehicle in result even if disabled"`
+}
+
+// Usage prints help text to the user.
+func (cmd *LookupCommand) Usage() string {
+	return LookupUsage
 }
 
 // Execute is called by go-flags and thus bootstraps the LookupCommand.
@@ -200,6 +225,11 @@ func (cmd *LookupCommand) Execute(opts []string) error {
 // DisableCommand disables a vehicle so it won't appear in lookups.
 type DisableCommand struct {
 	Hash string `short:"h" long:"hash" description:"Hash of vehicle to disable"`
+}
+
+// Usage prints help text to the user.
+func (cmd *DisableCommand) Usage() string {
+	return DisableUsage
 }
 
 // Execute runs the disable command.
