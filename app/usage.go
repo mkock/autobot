@@ -1,6 +1,7 @@
 package app
 
 // These are usage (help) texts shown when the app is started without the required arguments.
+// Note: Using an indentation of two spaces as it provides a nice "look" in the console.
 var (
 	ServeUsage = `Start autobot as a web server (micro service).
 
