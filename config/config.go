@@ -1,6 +1,10 @@
 package config
 
 import (
+	"fmt"
+	"os"
+	"path"
+
 	"github.com/BurntSushi/toml"
 )
 
@@ -45,10 +49,48 @@ type SyncConfig struct {
 }
 
 // NewConfig returns a app configuration struct, loaded from a TOML file.
+// If a file path is included in the file name, the file will be loaded from that path. Otherwise, NewConfig will assume
+// that the file is available in the same directory as the autobot executable and attempt to load it from there.
 func NewConfig(fname string) (Config, error) {
 	var conf Config
+	file := findConfig(fname)
+	if file == "" {
+		return conf, fmt.Errorf("No such file: %s", fname)
+	}
 	if _, err := toml.DecodeFile(fname, &conf); err != nil {
 		return conf, err
 	}
 	return conf, nil
+}
+
+// findConfig checks for the given file name in several locations: 1) the path, if a path is part of the file name,
+// 2) the current working directory, and 3) the directory of the autobot executable. Returns an empty string if the
+// file could not be found, or if it's a directory.
+func findConfig(fname string) string {
+	fpart := path.Base(fname)
+	// If we have a path or the file exists in the current working directory, use it.
+	if isRegularFile(fname) {
+		return fname
+	}
+	// Check the directory of the autobot executable.
+	dir, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+	fname = path.Join(dir, fpart)
+	if isRegularFile(fname) {
+		return fname
+	}
+	return ""
+}
+
+func isRegularFile(fname string) bool {
+	if fname == "" {
+		return false
+	}
+	finfo, err := os.Stat(fname)
+	if err != nil {
+		return false
+	}
+	return !finfo.IsDir()
 }

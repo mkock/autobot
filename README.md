@@ -105,6 +105,7 @@ That's all there is to it.
 11. Handle `*net.OpError` (network interruptions) during sync, if it makes sense
 12. Implement a cleanup job that removes all vehicles from the store that are not present in an index
 13. Add a discrete progress indicator while running sync (CLI only)
+14. Split up data providers and their configs so autobot will support multiple providers
 
 ## Changelog
 

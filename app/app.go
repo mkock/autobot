@@ -57,7 +57,7 @@ func monitorRuntime() {
 
 // Options contains command-line arguments parsed upon application initialisation.
 type Options struct {
-	ConfigFile string `short:"c" long:"config-file" required:"yes" default:"config.toml" description:"Application configuration file in TOML format"`
+	ConfigFile string `short:"c" long:"config-file" required:"no" default:"config.toml" description:"Application configuration file in TOML format"`
 }
 
 // ServeCommand is responsible for initialising and booting up a web server that supports much of the same functionality
@@ -268,7 +268,8 @@ func bootstrap(cmd flags.Commander, args []string) error {
 func Start() error {
 	// This will run the command that matches the command-line options.
 	if _, err := parser.Parse(); err != nil {
-		if err.(*flags.Error).Type == flags.ErrHelp {
+
+		if flagErr, ok := err.(*flags.Error); ok && flagErr.Type == flags.ErrHelp {
 			return nil // This is to avoid help messages from being printed twice.
 		}
 		return err
