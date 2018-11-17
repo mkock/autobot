@@ -3,6 +3,10 @@ package app
 // These are usage (help) texts shown when the app is started without the required arguments.
 // Note: Using an indentation of two spaces as it provides a nice "look" in the console.
 var (
+	InitUsage = `Write an empty template for a configuration file in TOML format.
+  
+  The empty configuration file is a good starting point, but you will need to fill in the details of the different
+  sections before autobot will be able to perform any work.`
 	ServeUsage = `Start autobot as a web server (micro service).
 
   The web service offers these endpoints:

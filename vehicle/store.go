@@ -47,7 +47,7 @@ func (e LogEntry) String() string {
 
 // String returns a string with some status information on the operation.
 func (op *syncOp) String() string {
-	return fmt.Sprintf("%s sync status - started: %s, duration: %s. Summary: synced %d of %d vehicles", strings.ToUpper(op.source), op.started.Format("2006-01-02T15:04:05"), op.duration.Truncate(time.Second), op.synced, op.processed)
+	return fmt.Sprintf("%s sync status - began: %s, duration: %s. Summary: synced %d of %d vehicles", strings.ToUpper(op.source), op.started.Format("2006-01-02T15:04:05"), op.duration.Truncate(time.Second), op.synced, op.processed)
 }
 
 // NewStore returns a new Store, which you can then interact with in order to start sync operations etc.

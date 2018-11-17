@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"log"
+	"os"
 	"runtime"
 	"time"
 
@@ -25,6 +26,7 @@ var (
 func init() {
 	// Setup commands.
 	var (
+		initCmd    InitCommand
 		syncCmd    SyncCommand
 		clearCmd   ClearCommand
 		statusCmd  StatusCommand
@@ -35,6 +37,7 @@ func init() {
 	globalOpts = &Options{}
 	parser = flags.NewParser(globalOpts, flags.Default)
 	parser.CommandHandler = bootstrap // Loads conf and connects to the vehicle store before executing commands.
+	parser.AddCommand("init", "initialise", "write an empty configuration file that you can fill out", &initCmd)
 	parser.AddCommand("sync", "synchronise", "synchronise the vehicle store with an external data source", &syncCmd)
 	parser.AddCommand("clear", "clear", "clears the vehicle store of all vehicles", &clearCmd)
 	parser.AddCommand("status", "status", "displays a short status of the vehicle store", &statusCmd)
@@ -58,6 +61,23 @@ func monitorRuntime() {
 // Options contains command-line arguments parsed upon application initialisation.
 type Options struct {
 	ConfigFile string `short:"c" long:"config-file" required:"no" default:"config.toml" description:"Application configuration file in TOML format"`
+}
+
+// InitCommand writes an empty configuration file to cwd, to help the user getting started with autobot.
+type InitCommand struct{}
+
+// Usage prints help text to the user.
+func (cmd *InitCommand) Usage() string {
+	return InitUsage
+}
+
+// Execute writes the empty configuration file to the current working directory.
+func (cmd *InitCommand) Execute(opts []string) error {
+	if err := config.WriteEmptyConf("config.toml"); err != nil {
+		return err
+	}
+	fmt.Println("Wrote config.toml")
+	return nil
 }
 
 // ServeCommand is responsible for initialising and booting up a web server that supports much of the same functionality
@@ -244,6 +264,11 @@ func loadConfig(fname string) (config.Config, error) {
 
 // bootstrap loads the app configuration and connects to the vehicle store.
 func bootstrap(cmd flags.Commander, args []string) error {
+	// Do not bootstrap the usual stuff when we are simply generating a config file.
+	// @TODO: We're bypassing go-flags here. Consider refactoring this to make it less fragile.
+	if len(os.Args) > 1 && os.Args[1] == "init" {
+		return cmd.Execute(args)
+	}
 	// Load the configuration file passed via the CLI.
 	var err error
 	conf, err = loadConfig(globalOpts.ConfigFile)
