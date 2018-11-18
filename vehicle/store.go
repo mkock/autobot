@@ -2,6 +2,7 @@ package vehicle
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -10,6 +11,11 @@ import (
 
 	"github.com/OmniCar/autobot/config"
 	"github.com/go-redis/redis"
+)
+
+// Exported errors.
+var (
+	ErrNoSuchVehicle = errors.New("no such vehicle")
 )
 
 // Store represents a Redis-compatible memory store such as Redis or Google Memory Store.
@@ -247,7 +253,7 @@ func (vs *Store) Enable(hash string) error {
 		return err
 	}
 	if vehicle == (Vehicle{}) {
-		return fmt.Errorf("Store: no vehicle with hash %s", hash)
+		return ErrNoSuchVehicle
 	}
 	vehicle.MetaData.Disabled = false
 	return vs.storeVehicle(vehicle)
@@ -260,7 +266,7 @@ func (vs *Store) Disable(hash string) error {
 		return err
 	}
 	if vehicle == (Vehicle{}) {
-		return fmt.Errorf("Store: no vehicle with hash %s", hash)
+		return ErrNoSuchVehicle
 	}
 	vehicle.MetaData.Disabled = true
 	return vs.storeVehicle(vehicle)

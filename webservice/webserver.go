@@ -200,13 +200,19 @@ func (srv *WebServer) handleVehicle(w http.ResponseWriter, r *http.Request) {
 	switch op {
 	case "disable":
 		if err := srv.store.Disable(hash); err != nil {
-			// @TODO: Need to identify regular errors from the case where the vehicle does not exist.
+			if err == vehicle.ErrNoSuchVehicle {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
 			srv.JSONError(w, APIError{http.StatusInternalServerError, errVehicleOp, err.Error()})
 			return
 		}
 	case "enable":
 		if err := srv.store.Enable(hash); err != nil {
-			// @TODO: Need to identify regular errors from the case where the vehicle does not exist.
+			if err == vehicle.ErrNoSuchVehicle {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
 			srv.JSONError(w, APIError{http.StatusInternalServerError, errVehicleOp, err.Error()})
 			return
 		}
