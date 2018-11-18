@@ -243,11 +243,11 @@ func (srv *WebServer) Serve(port uint, sync bool) error {
 		if err != nil {
 			return err // This will happen if the time expression from the config file couldn't be parsed.
 		}
-		<-sigs // Function will halt here until interrupted.
-		stop <- true
-	} else {
-		<-sigs // Function will halt here until interrupted.
+		defer func() {
+			stop <- true
+		}()
 	}
+	<-sigs // Function will halt here until interrupted.
 	fmt.Println("\nInterrupted o_O")
 	return nil
 }
