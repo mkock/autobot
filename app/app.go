@@ -85,7 +85,8 @@ func (cmd *InitCommand) Execute(opts []string) error {
 // ServeCommand is responsible for initialising and booting up a web server that supports much of the same functionality
 // that is also provided via the CLI.
 type ServeCommand struct {
-	Port uint `short:"p" long:"port" default:"1826" description:"Port number to listen on, defaults to 1826"`
+	Port   uint `short:"p" long:"port" default:"1826" description:"Port number to listen on, defaults to 1826"`
+	NoSync bool `short:"s" long:"no-sync" description:"Runs the web server without background synchronisation"`
 }
 
 // Usage prints help text to the user.
@@ -97,7 +98,7 @@ func (cmd *ServeCommand) Usage() string {
 func (cmd *ServeCommand) Execute(opts []string) error {
 	api := webservice.New(store, conf)
 	log.Printf("Serving on port %d\n", cmd.Port)
-	if err := api.Serve(cmd.Port); err != nil {
+	if err := api.Serve(cmd.Port, !cmd.NoSync); err != nil {
 		return err
 	}
 	return nil

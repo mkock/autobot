@@ -226,23 +226,28 @@ func (srv *WebServer) setupMux() {
 }
 
 // Serve starts the web server. It never returns unless interrupted.
-func (srv *WebServer) Serve(port uint) error {
+func (srv *WebServer) Serve(port uint, sync bool) error {
 	srv.setupMux()
 	srv.startTime = time.Now()
 	// Start a go routine with the web server.
 	go func() {
 		http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 	}()
-	// Start a go routine with the scheduler.
-	sched := scheduler.New(srv.cnf, srv.store)
-	stop, err := sched.Start()
-	if err != nil {
-		return err // This will happen if the time expression from the config file couldn't be parsed.
-	}
 	// Prepare a channel for service interruption using SIGINT/SIGTERM.
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	<-sigs // Function will halt here until interrupted.
-	stop <- true
+	if sync {
+		// Start a go routine with the scheduler.
+		sched := scheduler.New(srv.cnf, srv.store)
+		stop, err := sched.Start()
+		if err != nil {
+			return err // This will happen if the time expression from the config file couldn't be parsed.
+		}
+		<-sigs // Function will halt here until interrupted.
+		stop <- true
+	} else {
+		<-sigs // Function will halt here until interrupted.
+		fmt.Println("\nInterrupted o_O")
+	}
 	return nil
 }
