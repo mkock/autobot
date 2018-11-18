@@ -25,6 +25,7 @@ const (
 	errLogRetrieval
 	errLookup
 	errMarshalling
+	errVehicleOp
 )
 
 type status struct {
@@ -90,8 +91,8 @@ func (srv *WebServer) JSONError(w http.ResponseWriter, handlerErr APIError) {
 	fmt.Fprint(w, string(d))
 }
 
-// returnStatus returns a small JSON struct with the various information such as service uptime and status.
-func (srv *WebServer) returnStatus(w http.ResponseWriter, r *http.Request) {
+// handleStatus returns a small JSON struct with the various information such as service uptime and status.
+func (srv *WebServer) handleStatus(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -108,8 +109,8 @@ func (srv *WebServer) returnStatus(w http.ResponseWriter, r *http.Request) {
 	w.Write(bytes)
 }
 
-// returnVehicleStoreStatus fetches and returns the current status of the vehicle store.
-func (srv *WebServer) returnVehicleStoreStatus(w http.ResponseWriter, r *http.Request) {
+// handleStoreStatus fetches and returns the current status of the vehicle store.
+func (srv *WebServer) handleStoreStatus(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -135,9 +136,9 @@ func (srv *WebServer) returnVehicleStoreStatus(w http.ResponseWriter, r *http.Re
 	w.Write(bytes)
 }
 
-// lookupVehicle allows vehicle lookups based on hash value, VIN or registration number. A country must always be
+// handleLookup allows vehicle lookups based on hash value, VIN or registration number. A country must always be
 // provided.
-func (srv *WebServer) lookupVehicle(w http.ResponseWriter, r *http.Request) {
+func (srv *WebServer) handleLookup(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -184,11 +185,44 @@ func (srv *WebServer) lookupVehicle(w http.ResponseWriter, r *http.Request) {
 	w.Write(bytes)
 }
 
+// handleVehicle currently only allows enabling/disabling a specific vehicle by hash value.
+func (srv *WebServer) handleVehicle(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPatch {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	hash := r.URL.Query().Get("hash")
+	op := r.URL.Query().Get("op")
+	if hash == "" || op == "" {
+		srv.JSONError(w, APIError{http.StatusBadRequest, errVehicleOp, "Missing query parameter 'hash' and/or 'op'. Valid values for 'op': 'enable', 'disable'"})
+		return
+	}
+	switch op {
+	case "disable":
+		if err := srv.store.Disable(hash); err != nil {
+			// @TODO: Need to identify regular errors from the case where the vehicle does not exist.
+			srv.JSONError(w, APIError{http.StatusInternalServerError, errVehicleOp, err.Error()})
+			return
+		}
+	case "enable":
+		if err := srv.store.Enable(hash); err != nil {
+			// @TODO: Need to identify regular errors from the case where the vehicle does not exist.
+			srv.JSONError(w, APIError{http.StatusInternalServerError, errVehicleOp, err.Error()})
+			return
+		}
+	default:
+		srv.JSONError(w, APIError{http.StatusBadRequest, errVehicleOp, fmt.Sprintf("No such operation: %s", op)})
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // setupMux registers all the endpoints that the web server makes available.
 func (srv *WebServer) setupMux() {
-	http.HandleFunc("/", srv.returnStatus)                                // GET.
-	http.HandleFunc("/vehiclestore/status", srv.returnVehicleStoreStatus) // GET.
-	http.HandleFunc("/lookup", srv.lookupVehicle)                         // GET.
+	http.HandleFunc("/", srv.handleStatus)                         // GET.
+	http.HandleFunc("/vehiclestore/status", srv.handleStoreStatus) // GET.
+	http.HandleFunc("/lookup", srv.handleLookup)                   // GET.
+	http.HandleFunc("/vehicle", srv.handleVehicle)                 // PATCH.
 }
 
 // Serve starts the web server. It never returns unless interrupted.

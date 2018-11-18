@@ -32,6 +32,7 @@ func init() {
 		statusCmd  StatusCommand
 		lookupCmd  LookupCommand
 		disableCmd DisableCommand
+		enableCmd  EnableCommand
 		serveCmd   ServeCommand
 	)
 	globalOpts = &Options{}
@@ -41,8 +42,9 @@ func init() {
 	parser.AddCommand("sync", "synchronise", "synchronise the vehicle store with an external data source", &syncCmd)
 	parser.AddCommand("clear", "clear", "clears the vehicle store of all vehicles", &clearCmd)
 	parser.AddCommand("status", "status", "displays a short status of the vehicle store", &statusCmd)
-	parser.AddCommand("lookup", "vehicle lookup", "performs a vehicle lookup, by VIN or registration number", &lookupCmd)
-	parser.AddCommand("disable", "vehicle disabling", "disables a vehicle so it won't appear in lookups", &disableCmd)
+	parser.AddCommand("lookup", "lookup vehicle", "performs a vehicle lookup, by VIN or registration number", &lookupCmd)
+	parser.AddCommand("disable", "disable vehicle", "disables a vehicle so it won't appear in lookups", &disableCmd)
+	parser.AddCommand("enable", "enable vehicle", "enables a vehicle so it will reappear in lookups", &enableCmd)
 	parser.AddCommand("serve", "serve", "starts autobot as a web server", &serveCmd)
 }
 
@@ -255,6 +257,21 @@ func (cmd *DisableCommand) Usage() string {
 // Execute runs the disable command.
 func (cmd *DisableCommand) Execute(opts []string) error {
 	return store.Disable(cmd.Hash)
+}
+
+// EnableCommand enables a previously disabled vehicle so it will reappear in lookups.
+type EnableCommand struct {
+	Hash string `short:"h" long:"hash" description:"Hash of vehicle to enable"`
+}
+
+// Usage prints help text to the user.
+func (cmd *EnableCommand) Usage() string {
+	return EnableUsage
+}
+
+// Execute runs the enable command.
+func (cmd *EnableCommand) Execute(opts []string) error {
+	return store.Enable(cmd.Hash)
 }
 
 // loadConfig loads the TOML configuration file with the specified name.

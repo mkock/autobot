@@ -240,6 +240,19 @@ func (vs *Store) lookup(id, index string) (string, error) {
 	return strings.Split(matches[0], ":")[2], nil
 }
 
+// Enable enables the vehicle with the given hash value, if it exists.
+func (vs *Store) Enable(hash string) error {
+	vehicle, err := vs.lookupVehicleSimple(hash)
+	if err != nil {
+		return err
+	}
+	if vehicle == (Vehicle{}) {
+		return fmt.Errorf("Store: no vehicle with hash %s", hash)
+	}
+	vehicle.MetaData.Disabled = false
+	return vs.storeVehicle(vehicle)
+}
+
 // Disable disables the vehicle with the given hash value, if it exists.
 func (vs *Store) Disable(hash string) error {
 	vehicle, err := vs.lookupVehicleSimple(hash)

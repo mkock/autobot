@@ -35,4 +35,8 @@ var (
 	
   The disabled vehicle will only appear in a lookup if the option "--disabled" is used.
   Disabling vehicles does not affect synchronisation.`
+	EnableUsage = `Enable a vehicle.
+  
+  The reenabled vehicle will reappear in vehicle lookups as normal.
+  Enabling vehicles does not affect synchronisation.`
 )

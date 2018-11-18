@@ -35,13 +35,13 @@ Autobot talks to several external systems and thefore require some configuration
 via a TOML file, which controls aspects of FTP connectivity, memory store integration, the actual synchronization
 algorithm etc.
 
-## API (Planned)
+## API
 
 - `GET /` returns a simple status, ie. uptime etc.
 - `GET /vehiclestore/status` returns a status for the vehicle store, ie. last sync time and number of vehicles.
 - `GET /lookup` looks up a vehicle by hash value or a combination of country and registration- or VIN number.
 - `PATCH /vehicle` disables/enables a vehicle by hash value.
-- `PUT /vehicle` updates a vehicle's master data
+- `PUT /vehicle` _(planned)_ updates a vehicle's master data
 
 ## Package Structure
 
@@ -100,12 +100,13 @@ That's all there is to it.
 6. ~~Add support for disabling vehicles~~ _Done_
 7. ~~Build a simple HTTP API with support for lookups~~ _Done_
 8. Switch from Go's builtin http package to Gin and add request logging, central error handling etc.
-9. Allow the user to disable and re-enable vehicles via the API
+9. ~~Allow the user to disable and re-enable vehicles via the API~~ _Done_
 10. Allow the user to create revisions of vehicles via the API
 11. Handle `*net.OpError` (network interruptions) during sync, if it makes sense
 12. Implement a cleanup job that removes all vehicles from the store that are not present in an index
 13. Add a discrete progress indicator while running sync (CLI only)
 14. Split up data providers and their configs so autobot will support multiple providers
+15. Consider providing optional CSV output for both CLI and API
 
 ## Changelog
 
