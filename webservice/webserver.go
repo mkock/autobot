@@ -247,7 +247,7 @@ func (srv *WebServer) Serve(port uint, sync bool) error {
 		stop <- true
 	} else {
 		<-sigs // Function will halt here until interrupted.
-		fmt.Println("\nInterrupted o_O")
 	}
+	fmt.Println("\nInterrupted o_O")
 	return nil
 }

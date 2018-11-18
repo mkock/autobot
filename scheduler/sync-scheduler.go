@@ -67,7 +67,6 @@ func (sched *SyncScheduler) repeatSync(stop <-chan bool) {
 		}
 		select {
 		case <-stop:
-			fmt.Println("\nInterrupted o_O")
 			return
 		case _ = <-time.After(dur):
 			// The call to doSync is synchronous so we don't risk starting several sync jobs on top of each other.
