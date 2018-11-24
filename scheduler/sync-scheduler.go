@@ -78,17 +78,17 @@ func (sched *SyncScheduler) repeatSync(stop <-chan bool) {
 }
 
 // doSync starts the actual data synchronisation.
+// Note: it currently only supports synchronisation with DMR.
 func (sched *SyncScheduler) doSync() error {
 	var (
 		fname, latest string
 		err           error
 	)
 	fname, _ = sched.store.GetLastSynced()
-	prov := dataprovider.NewProvider(dataprovider.FtpProv, sched.cnf)
+	prov := dataprovider.NewProvider(dataprovider.FtpProv, sched.cnf.Providers["DMR"])
 	if err = prov.Open(); err != nil {
 		return err
 	}
-	// defer prov.Close()
 	latest, err = prov.CheckForLatest(fname)
 	if err != nil {
 		return err
@@ -106,7 +106,6 @@ func (sched *SyncScheduler) doSync() error {
 		log.Println("Sync: no stat file detected. Aborting")
 		return nil
 	}
-	// defer src.Close()
 	id := sched.store.NewSyncOp(dataprovider.ProvTypeString(dataprovider.FtpProv))
 
 	dmrService := dmr.NewService()

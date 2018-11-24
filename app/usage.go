@@ -20,8 +20,13 @@ var (
   
   While the server is running, a scheduler will periodically check for new vehicle data from its source(s).
   This happens according to the cron-style time expression given in the config file.`
-	SyncUsage = `Synchronise manually with all supported vehicle data sources.
+	SyncUsage = `Synchronise manually with a specific data source.
 
+  The parameter "-p" (or "--provider") should specify the name of a provider to sync with.
+  The name must match the provider name from the config file; that would be "[Providers.NAME]".
+  Example:
+    if the config file contains "[Providers.TEST]", among others, and you want to run a synchronisation with TEST,
+    just use "-p TEST".
   Please be patient as synchronisation may take a long time.`
 	LookupUsage = `Perform a vehicle lookup based on registration or VIN.
 

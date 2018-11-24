@@ -107,6 +107,7 @@ That's all there is to it.
 13. Add a discrete progress indicator while running sync (CLI only)
 14. Split up data providers and their configs so autobot will support multiple providers
 15. Consider providing optional CSV output for both CLI and API
+16. Add a CLI command "test" that tests integration with each provider
 
 ## Changelog
 

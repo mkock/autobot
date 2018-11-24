@@ -10,10 +10,15 @@ import (
 
 // Config contains the application configuration.
 type Config struct {
-	Ftp        FtpConfig
+	Providers  map[string]ProviderConfig
 	MemStore   MemStoreConfig
 	WebService WebServiceConfig
 	Sync       SyncConfig
+}
+
+// ProviderConfig contains configuration for the DMR data provider.
+type ProviderConfig struct {
+	FtpConfig
 }
 
 // FtpConfig contains FTP connection configuration.

@@ -38,10 +38,10 @@ func ProvTypeString(ptype int) string {
 }
 
 // NewProvider returns a new provider of the requested type (implementation).
-func NewProvider(ptype int, config config.Config) DataProvider {
+func NewProvider(ptype int, config config.ProviderConfig) DataProvider {
 	switch ptype {
 	case FtpProv:
-		return NewFtpProvider(config.Ftp)
+		return NewFtpProvider(config.FtpConfig)
 	case FsProv:
 		return NewFileProvider()
 	default:

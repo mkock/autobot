@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	version    = "1.0"        // Overridden by ldflags.
+	version    = "1.0"        // Edited manually.
 	parser     *flags.Parser  // Initialised in init.
 	globalOpts *Options       // Initialised in init.
 	conf       config.Config  // Initialised in bootstrap.
@@ -123,6 +123,7 @@ func (cmd *ServeCommand) Execute(opts []string) error {
 
 // SyncCommand contains options for synchronising the vehicle store with an external source.
 type SyncCommand struct {
+	Provider   string `short:"p" long:"provider" required:"yes" description:"Name of provider to sync with"`
 	SourceFile string `short:"f" long:"source-file" description:"DMR XML file in UTF-8 format"`
 	Debug      bool   `short:"d" long:"debug" description:"Debug: print CPU count, goroutine count and memory usage every 10 seconds"`
 }
@@ -137,15 +138,22 @@ func (cmd *SyncCommand) Execute(opts []string) error {
 	if cmd.Debug {
 		go monitorRuntime()
 	}
-	var ptype int
+	var (
+		ptype   int
+		ok      bool
+		provCnf config.ProviderConfig
+	)
+	if provCnf, ok = conf.Providers[cmd.Provider]; !ok {
+		return fmt.Errorf("No such provider: %s", cmd.Provider)
+	}
 	if cmd.SourceFile == "" {
-		log.Printf("Using FTP data file at %q\n", conf.Ftp.Host)
+		log.Printf("Using FTP data file at %q\n", provCnf.Host)
 		ptype = dataprovider.FtpProv
 	} else {
 		log.Printf("Using local data file: %s\n", cmd.SourceFile)
 		ptype = dataprovider.FsProv
 	}
-	prov := dataprovider.NewProvider(ptype, conf)
+	prov := dataprovider.NewProvider(ptype, provCnf)
 	if err := prov.Open(); err != nil {
 		return err
 	}
