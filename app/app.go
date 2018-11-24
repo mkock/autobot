@@ -16,6 +16,7 @@ import (
 )
 
 var (
+	version    = "1.0"        // Overridden by ldflags.
 	parser     *flags.Parser  // Initialised in init.
 	globalOpts *Options       // Initialised in init.
 	conf       config.Config  // Initialised in bootstrap.
@@ -34,6 +35,7 @@ func init() {
 		disableCmd DisableCommand
 		enableCmd  EnableCommand
 		serveCmd   ServeCommand
+		verCmd     VersionCommand
 	)
 	globalOpts = &Options{}
 	parser = flags.NewParser(globalOpts, flags.Default)
@@ -46,6 +48,7 @@ func init() {
 	parser.AddCommand("disable", "disable vehicle", "disables a vehicle so it won't appear in lookups", &disableCmd)
 	parser.AddCommand("enable", "enable vehicle", "enables a vehicle so it will reappear in lookups", &enableCmd)
 	parser.AddCommand("serve", "serve", "starts autobot as a web server", &serveCmd)
+	parser.AddCommand("version", "version", "displays the current build version of autobot", &verCmd)
 }
 
 func monitorRuntime() {
@@ -79,6 +82,20 @@ func (cmd *InitCommand) Execute(opts []string) error {
 		return err
 	}
 	fmt.Println("Wrote config.toml")
+	return nil
+}
+
+// VersionCommand displays the current build version of autobot.
+type VersionCommand struct{}
+
+// Usage prints help text to the user.
+func (cmd *VersionCommand) Usage() string {
+	return VersionUsage
+}
+
+// Execute displays the current build version of autobot.
+func (cmd *VersionCommand) Execute(opts []string) error {
+	fmt.Printf("Autobot version: %s\n", version)
 	return nil
 }
 

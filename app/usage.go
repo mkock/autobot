@@ -7,7 +7,8 @@ var (
   
   The empty configuration file is a good starting point, but you will need to fill in the details of the different
   sections before autobot will be able to perform any work.`
-	ServeUsage = `Start autobot as a web server (micro service).
+	VersionUsage = `Display the current build version of autobot.`
+	ServeUsage   = `Start autobot as a web server (micro service).
 
   The web service offers these endpoints:
   - GET /                    responds with a service status
