@@ -16,7 +16,7 @@ type Config struct {
 	Sync       SyncConfig
 }
 
-// ProviderConfig contains configuration for the DMR data provider.
+// ProviderConfig contains configuration for the data provider.
 type ProviderConfig struct {
 	FtpConfig
 }

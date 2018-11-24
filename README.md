@@ -105,9 +105,10 @@ That's all there is to it.
 11. Handle `*net.OpError` (network interruptions) during sync, if it makes sense
 12. Implement a cleanup job that removes all vehicles from the store that are not present in an index
 13. Add a discrete progress indicator while running sync (CLI only)
-14. Split up data providers and their configs so autobot will support multiple providers
+14. ~~Split up data providers and their configs so autobot will support multiple providers~~ _Done_
 15. Consider providing optional CSV output for both CLI and API
 16. Add a CLI command "test" that tests integration with each provider
+17. Add support for direct vehicle lookups in case of cache misses?
 
 ## Changelog
 

@@ -5,7 +5,9 @@ import (
 	"text/template"
 )
 
-var cnfTpl = `[Ftp]
+var cnfTpl = `[Providers]
+
+[Providers.NAME]
 Host = ""
 Port = 21
 User = ""
