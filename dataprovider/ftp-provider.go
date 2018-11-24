@@ -33,15 +33,20 @@ func (prov *FtpProvider) Open() error {
 		ConnectionsPerHost: 1,
 		Timeout:            12 * time.Hour,
 	}
-	host := fmt.Sprintf("%s:%d", prov.config.Host, prov.config.Port)
+	var host string
+	if prov.config.Port > 0 {
+		host = fmt.Sprintf("%s:%d", prov.config.Host, prov.config.Port)
+	} else {
+		host = prov.config.Host
+	}
 	log.Printf("Connecting to %s...\n", host)
 	client, dialErr := goftp.DialConfig(dialConf, host)
 	if dialErr != nil {
 		return dialErr
 	}
-	// Run a STAT op to verify the connection, due to a misnomer in goftp where it doesn't return an error when the
+	// Run a MLSD/LIST op to verify the connection, due to a flaw in goftp where it doesn't return an error when the
 	// connection fails. See https://github.com/secsy/goftp/issues/35.
-	if _, err := client.Stat("/"); err != nil {
+	if _, err := client.ReadDir(prov.config.Dir); err != nil {
 		return err
 	}
 	prov.client = client
@@ -87,6 +92,7 @@ func (prov *FtpProvider) Provide(fname string) (io.ReadCloser, error) {
 	if err != nil {
 		return nil, err
 	}
+	log.Printf("Downloading %s...\n", fname)
 	if err := prov.client.Retrieve(srcPath, w); err != nil {
 		log.Fatal(err)
 	}
