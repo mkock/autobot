@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/OmniCar/autobot/config"
+	"github.com/OmniCar/autobot/extlookup"
 	"github.com/OmniCar/autobot/scheduler"
 	"github.com/OmniCar/autobot/vehicle"
 )
@@ -41,9 +42,10 @@ type storeStatus struct {
 
 // WebServer represents the REST-API part of autobot.
 type WebServer struct {
-	startTime time.Time
-	store     *vehicle.Store
-	cnf       config.Config
+	startTime  time.Time
+	store      *vehicle.Store
+	lookupMngr *extlookup.Manager
+	cnf        config.Config
 }
 
 // APIError is the error returned to clients whenever an internal error has happened.
@@ -64,16 +66,17 @@ type APIVehicle struct {
 	Model        string `json:"model"`
 	FuelType     string `json:"fuelType"`
 	FirstRegDate string `json:"firstRegDate"`
+	FromCache    bool   `json:"fromCache"`
 }
 
 // vehicleToAPIType converts a vehicle.Vehicle into the local APIVehicle, which is used for the http request/response.
-func vehicleToAPIType(veh vehicle.Vehicle) APIVehicle {
-	return APIVehicle{strconv.FormatUint(veh.MetaData.Hash, 10), vehicle.RegCountryToString(veh.MetaData.Country), veh.RegNr, veh.VIN, veh.Brand, veh.Model, veh.FuelType, veh.FirstRegDate.Format(dateFmt)}
+func vehicleToAPIType(veh vehicle.Vehicle, fromCache bool) APIVehicle {
+	return APIVehicle{strconv.FormatUint(veh.MetaData.Hash, 10), vehicle.RegCountryToString(veh.MetaData.Country), veh.RegNr, veh.VIN, veh.Brand, veh.Model, veh.FuelType, veh.FirstRegDate.Format(dateFmt), fromCache}
 }
 
 // New initialises a new webserver. You need to start it by calling Serve().
-func New(store *vehicle.Store, cnf config.Config) *WebServer {
-	return &WebServer{time.Now(), store, cnf}
+func New(store *vehicle.Store, mngr *extlookup.Manager, cnf config.Config) *WebServer {
+	return &WebServer{time.Now(), store, mngr, cnf}
 }
 
 // JSONError serves the given error as JSON.
@@ -143,6 +146,7 @@ func (srv *WebServer) handleLookup(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+	fromCache := true
 	country := r.URL.Query().Get("country")
 	hash := r.URL.Query().Get("hash")
 	regNr := r.URL.Query().Get("regnr")
@@ -173,10 +177,38 @@ func (srv *WebServer) handleLookup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if veh == (vehicle.Vehicle{}) {
-		w.WriteHeader(http.StatusNotFound)
-		return
+		// No cached result, so we attempt a direct lookup.
+		mngr := srv.lookupMngr.FindServiceByCountry(regCountry)
+		if mngr == nil {
+			// No manager exists for that country, so let's give up.
+			fmt.Printf("No direct lookups supported for country %s\n", vehicle.RegCountryToString(regCountry))
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		if regNr != "" {
+			fmt.Printf("Cache miss: performing direct lookup of reg.nr. %s via %q\n", regNr, mngr.Name())
+			veh, err = mngr.LookupRegNr(regNr)
+		} else {
+			fmt.Printf("Cache miss: performing direct lookup of VIN %s via %q\n", vin, mngr.Name())
+			veh, err = mngr.LookupVIN(vin)
+		}
+		if err != nil {
+			srv.JSONError(w, APIError{http.StatusInternalServerError, errLookup, err.Error()})
+			return
+		}
+		// At this point, we found a vehicle via direct lookup. Let's cache it for future lookups!
+		if err = veh.GenHash(); err != nil {
+			// We just print the error. It doesn't prevent the request from completing.
+			fmt.Printf("Error generating hash for vehicle with Ident %d\n", veh.MetaData.Ident)
+		} else {
+			if _, err := srv.store.SyncVehicle(veh); err != nil {
+				// Again, we don't let this error interrupt the request.
+				fmt.Printf("Unable to add vehicle with Ident %d\n", veh.MetaData.Ident)
+			}
+		}
+		fromCache = false
 	}
-	bytes, err := json.Marshal(vehicleToAPIType(veh))
+	bytes, err := json.Marshal(vehicleToAPIType(veh, fromCache))
 	if err != nil {
 		srv.JSONError(w, APIError{http.StatusInternalServerError, errMarshalling, err.Error()})
 	}

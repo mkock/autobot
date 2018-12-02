@@ -19,6 +19,7 @@ type Config struct {
 // ProviderConfig contains configuration for the data provider.
 type ProviderConfig struct {
 	FtpConfig
+	LookupConfig
 }
 
 // FtpConfig contains FTP connection configuration.
@@ -29,6 +30,15 @@ type FtpConfig struct {
 	Password   string
 	Dir        string
 	FilePrefix string
+}
+
+// LookupConfig contains configuration for performing direct vehicle lookups via an API.
+type LookupConfig struct {
+	LookupSupported bool
+	LookupSecure    bool
+	LookupHost      string
+	LookupPath      string
+	LookupKey       string
 }
 
 // MemStoreConfig contains configuration for memory store / Redis.

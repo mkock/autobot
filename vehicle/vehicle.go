@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/mitchellh/hashstructure"
 )
 
 // List contains vehicles that were found during parsing.
@@ -63,6 +65,16 @@ func RegCountryToString(reg RegCountry) string {
 		}
 	}
 	return "DK" // Default.
+}
+
+// GenHash generates a unique hash value of the vehicle. The hash is stored in the vehicle metadata.
+func (v *Vehicle) GenHash() error {
+	hash, err := hashstructure.Hash(v, nil)
+	if err != nil {
+		return fmt.Errorf("unable to hash Vehicle with Ident: %d", v.MetaData.Ident)
+	}
+	v.MetaData.Hash = hash
+	return nil
 }
 
 // String returns a stringified representation of the Vehicle data structure.

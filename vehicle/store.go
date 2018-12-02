@@ -146,7 +146,7 @@ func (vs *Store) Sync(id SyncOpID, vehicles <-chan Vehicle, done <-chan bool) er
 		select {
 		case vehicle := <-vehicles:
 			op.processed++
-			ok, err := vs.syncVehicle(vehicle)
+			ok, err := vs.SyncVehicle(vehicle)
 			if err != nil {
 				return err
 			}
@@ -179,10 +179,10 @@ func unserializeVehicle(str string) (Vehicle, error) {
 	return vehicle, nil
 }
 
-// storeVehicle stores any changes made to the vehicle.
+// updateVehicle stores any changes made to the vehicle.
 // Note: for now, this function assumes that changes were made only to the metadata. If the vehicle base data
 // is changed, we need to generate a new hash and update the indexes.
-func (vs *Store) storeVehicle(vehicle Vehicle) error {
+func (vs *Store) updateVehicle(vehicle Vehicle) error {
 	val, err := serializeVehicle(vehicle)
 	if err != nil {
 		return err
@@ -195,9 +195,9 @@ func (vs *Store) storeVehicle(vehicle Vehicle) error {
 	return nil
 }
 
-// syncVehicle synchronizes a single Vehicle with the memory store.
+// SyncVehicle synchronizes a single Vehicle with the memory store.
 // It returns a bool indicating whether the vehicle was added/updated or not.
-func (vs *Store) syncVehicle(vehicle Vehicle) (bool, error) {
+func (vs *Store) SyncVehicle(vehicle Vehicle) (bool, error) {
 	mapName := vs.opts.VehicleMap
 	vinIndex := vs.opts.VINSortedSet
 	regIndex := vs.opts.RegNrSortedSet
@@ -206,7 +206,7 @@ func (vs *Store) syncVehicle(vehicle Vehicle) (bool, error) {
 	if err != nil || exists {
 		return false, err
 	}
-	if err := vs.storeVehicle(vehicle); err != nil {
+	if err := vs.updateVehicle(vehicle); err != nil {
 		return false, err
 	}
 	// Update the VIN index.
@@ -256,7 +256,7 @@ func (vs *Store) Enable(hash string) error {
 		return ErrNoSuchVehicle
 	}
 	vehicle.MetaData.Disabled = false
-	return vs.storeVehicle(vehicle)
+	return vs.updateVehicle(vehicle)
 }
 
 // Disable disables the vehicle with the given hash value, if it exists.
@@ -269,7 +269,7 @@ func (vs *Store) Disable(hash string) error {
 		return ErrNoSuchVehicle
 	}
 	vehicle.MetaData.Disabled = true
-	return vs.storeVehicle(vehicle)
+	return vs.updateVehicle(vehicle)
 }
 
 // remove removes the member with the given id from the sorted set index of the given name.

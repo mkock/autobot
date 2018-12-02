@@ -10,17 +10,19 @@ import (
 	"github.com/OmniCar/autobot/config"
 	"github.com/OmniCar/autobot/dataprovider"
 	"github.com/OmniCar/autobot/dmr"
+	"github.com/OmniCar/autobot/extlookup"
 	"github.com/OmniCar/autobot/vehicle"
 	"github.com/OmniCar/autobot/webservice"
 	"github.com/jessevdk/go-flags"
 )
 
 var (
-	version    = "1.0"        // Edited manually.
-	parser     *flags.Parser  // Initialised in init.
-	globalOpts *Options       // Initialised in init.
-	conf       config.Config  // Initialised in bootstrap.
-	store      *vehicle.Store // Initialised in bootstrap.
+	version       = "1.0"            // Edited manually.
+	parser        *flags.Parser      // Initialised in init.
+	globalOpts    *Options           // Initialised in init.
+	conf          config.Config      // Initialised in bootstrap.
+	store         *vehicle.Store     // Initialised in bootstrap.
+	lookupManager *extlookup.Manager // Initalised in bootstrap.
 )
 
 // init (called automatically) sets up the CLI parser.
@@ -113,7 +115,7 @@ func (cmd *ServeCommand) Usage() string {
 
 // Execute runs the web server. It does not return unless the web server stops functioning.
 func (cmd *ServeCommand) Execute(opts []string) error {
-	api := webservice.New(store, conf)
+	api := webservice.New(store, lookupManager, conf)
 	log.Printf("Serving on port %d\n", cmd.Port)
 	if err := api.Serve(cmd.Port, !cmd.NoSync); err != nil {
 		return err
@@ -327,6 +329,12 @@ func bootstrap(cmd flags.Commander, args []string) error {
 	defer func() {
 		store.Close()
 	}()
+
+	// Initialise and configure the lookup manager.
+	// @TODO: We need to loop over LookupConfigs and add a manager for each, dynamically.
+	lookupManager = extlookup.NewManager()
+	nrplade := extlookup.NewNrpladeService(conf.Providers["DMR"].LookupConfig)
+	lookupManager.AddService(nrplade)
 
 	// Carry on with command execution.
 	return cmd.Execute(args)

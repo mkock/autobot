@@ -109,6 +109,8 @@ That's all there is to it.
 15. Consider providing optional CSV output for both CLI and API
 16. Add a CLI command "test" that tests integration with each provider
 17. Add support for direct vehicle lookups in case of cache misses?
+18. Achieve some test coverage!
+19. Improve quality of imported vehicles: ignore old (recycled plates) and invalid vehicle data
 
 ## Changelog
 
