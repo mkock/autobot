@@ -114,7 +114,7 @@ That's all there is to it.
 
 ## Changelog
 
-- _v1.0_ (Nov. 18) Initial version, with synchronization from DMR using Redis/Google Memory Store and data hashing.
+- _v1.0_ (Dec. 18) Initial version, with synchronization from DMR using Redis/Google Memory Store and data hashing.
 
 ## FAQ
 
@@ -129,7 +129,7 @@ It exists to meet a concrete need at my workplace, OmniCar A/S. As a company tha
 vehicles, there is a regular need for performing lookups based on license plate numbers and other car master data.
 
 These lookups are rarely free - in fact, the services that provide them often charge a fee per lookup. To save money
-on lookups, it becomes prudent to not only cache the results, but also to create our own vehicle database if possible.
+on lookups, it becomes prudent to not only cache the results, but also to create our own vehicle database.
 
 Autobot is the answer to these needs.
 
@@ -140,4 +140,4 @@ real-world project to apply my knowledge to. So it's a learning project too.
 
 _Why is this open source?_
 
-It isn't, not yet. But it aims to be.
+Because you might benefit from this code too :-)
