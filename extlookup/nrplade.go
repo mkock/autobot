@@ -7,8 +7,8 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/OmniCar/autobot/config"
-	"github.com/OmniCar/autobot/vehicle"
+	"github.com/mkock/autobot/config"
+	"github.com/mkock/autobot/vehicle"
 )
 
 // NewNrpladeService returns a new Nrplade service for direct vehicle lookups.

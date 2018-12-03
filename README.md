@@ -9,9 +9,40 @@ lookups, which can be expensive as existing providers often charge a fee per loo
 To further reduce the need for external lookups, a data synchronization service is included, which is currently
 integrated with DMR, the Danish Motor vehicle Registry. Others can be added fairly easily.
 
-## Purpose
+## Getting Started
 
-The purpose is to store and provide easy access to vehicle history and registration information, using the following
+From the command line, assuming that you already have Go on your system:
+
+```bash
+go get github.com/mkock/autobot
+cd /path/go/autobot
+make install
+```
+
+Make will only build for OSX for now. For testing locally, you'll need Redis as well.
+
+You'll need a configuration file with non-trivial connection parameters to get started. You can run:
+
+```bash
+autobot init
+```
+
+to generate a starting point, `config.toml`. Edit this file with connection parameters to Redis and each data provider
+and try it out by running:
+
+```bash
+autobot status
+```
+
+This command should also provide some useful information to get started:
+
+```bash
+autobot --help
+```
+
+## How it Works
+
+Autobot stores and provides easy access to vehicle history and registration information, using the following
 key data for the core service:
 
 - License plate number

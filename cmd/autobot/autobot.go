@@ -5,7 +5,7 @@ package main
 import (
 	"log"
 
-	"github.com/OmniCar/autobot/app"
+	"github.com/mkock/autobot/app"
 )
 
 func main() {

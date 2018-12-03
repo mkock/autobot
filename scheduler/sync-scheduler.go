@@ -6,12 +6,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/OmniCar/autobot/dataprovider"
-	"github.com/OmniCar/autobot/dmr"
+	"github.com/mkock/autobot/dataprovider"
+	"github.com/mkock/autobot/dmr"
 
-	"github.com/OmniCar/autobot/config"
-	"github.com/OmniCar/autobot/vehicle"
 	"github.com/gorhill/cronexpr"
+	"github.com/mkock/autobot/config"
+	"github.com/mkock/autobot/vehicle"
 )
 
 // SyncScheduler represents a new scheduler.

@@ -7,13 +7,13 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/OmniCar/autobot/config"
-	"github.com/OmniCar/autobot/dataprovider"
-	"github.com/OmniCar/autobot/dmr"
-	"github.com/OmniCar/autobot/extlookup"
-	"github.com/OmniCar/autobot/vehicle"
-	"github.com/OmniCar/autobot/webservice"
 	"github.com/jessevdk/go-flags"
+	"github.com/mkock/autobot/config"
+	"github.com/mkock/autobot/dataprovider"
+	"github.com/mkock/autobot/dmr"
+	"github.com/mkock/autobot/extlookup"
+	"github.com/mkock/autobot/vehicle"
+	"github.com/mkock/autobot/webservice"
 )
 
 var (

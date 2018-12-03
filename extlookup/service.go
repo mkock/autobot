@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/OmniCar/autobot/config"
+	"github.com/mkock/autobot/config"
 )
 
 // Service handles the shared part of various Service implementations.

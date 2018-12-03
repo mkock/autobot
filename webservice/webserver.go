@@ -10,10 +10,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/OmniCar/autobot/config"
-	"github.com/OmniCar/autobot/extlookup"
-	"github.com/OmniCar/autobot/scheduler"
-	"github.com/OmniCar/autobot/vehicle"
+	"github.com/mkock/autobot/config"
+	"github.com/mkock/autobot/extlookup"
+	"github.com/mkock/autobot/scheduler"
+	"github.com/mkock/autobot/vehicle"
 )
 
 const (

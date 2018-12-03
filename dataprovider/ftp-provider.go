@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/OmniCar/autobot/config"
+	"github.com/mkock/autobot/config"
 	"github.com/secsy/goftp"
 )
 

@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/OmniCar/autobot/vehicle"
+	"github.com/mkock/autobot/vehicle"
 )
 
 // Service represents DMR (Danish Motor Registry).

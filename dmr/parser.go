@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/OmniCar/autobot/vehicle"
+	"github.com/mkock/autobot/vehicle"
 )
 
 // XMLParser represents an XML parser.

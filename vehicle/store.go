@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/OmniCar/autobot/config"
 	"github.com/go-redis/redis"
+	"github.com/mkock/autobot/config"
 )
 
 // Exported errors.

@@ -1,6 +1,6 @@
 package extlookup
 
-import "github.com/OmniCar/autobot/vehicle"
+import "github.com/mkock/autobot/vehicle"
 
 // Lookupable is the interface that each direct vehicle lookup service must implement.
 type Lookupable interface {

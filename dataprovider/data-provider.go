@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/OmniCar/autobot/config"
+	"github.com/mkock/autobot/config"
 )
 
 // Constants for picking DataProvider implementations.
