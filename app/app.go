@@ -104,7 +104,7 @@ func (cmd *VersionCommand) Execute(opts []string) error {
 // ServeCommand is responsible for initialising and booting up a web server that supports much of the same functionality
 // that is also provided via the CLI.
 type ServeCommand struct {
-	Port   uint `short:"p" long:"port" default:"1826" description:"Port number to listen on, defaults to 1826"`
+	Port   uint `short:"p" long:"port" default:"1826" description:"Port number to listen on"`
 	NoSync bool `short:"s" long:"no-sync" description:"Runs the web server without background synchronisation"`
 }
 

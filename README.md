@@ -19,7 +19,7 @@ cd /path/go/autobot
 make install
 ```
 
-Make will only build for OSX for now. For testing locally, you'll need Redis as well.
+Make will currently only build for OSX and Linux. For testing locally, you'll need Redis as well.
 
 You'll need a configuration file with non-trivial connection parameters to get started. You can run:
 
@@ -139,9 +139,10 @@ That's all there is to it.
 14. ~~Split up data providers and their configs so autobot will support multiple providers~~ _Done_
 15. Consider providing optional CSV output for both CLI and API
 16. Add a CLI command "test" that tests integration with each provider
-17. Add support for direct vehicle lookups in case of cache misses?
+17. ~~Add support for direct vehicle lookups in case of cache misses?~~ _Done_
 18. Achieve some test coverage!
 19. Improve quality of imported vehicles: ignore old (recycled plates) and invalid vehicle data
+20. Convert provider implementations into country-based "plugins" with higher decoupling
 
 ## Changelog
 
