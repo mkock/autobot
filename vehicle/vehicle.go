@@ -123,9 +123,3 @@ func DisabledAsString(status bool) string {
 	}
 	return "Active"
 }
-
-// Loader is the interface that each service must satisfy in order to provide vehicle data.
-type Loader interface {
-	HasNew() (bool, error)
-	LoadNew() (vehicles chan<- Vehicle, done chan<- bool)
-}

@@ -15,7 +15,7 @@ import (
 type Service struct {
 }
 
-// NewService returns a service that satisfies the VehicleLoader interface.
+// NewService returns a service that can parse DMR data.
 func NewService() *Service {
 	return &Service{}
 }
