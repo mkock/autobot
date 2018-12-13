@@ -45,4 +45,9 @@ var (
   
   The reenabled vehicle will reappear in vehicle lookups as normal.
   Enabling vehicles does not affect synchronisation.`
+	QueryUsage = `Query for vehicles.
+  
+  Searches for vehicles using various criteria for text matching and sorting.
+  For now, only an upper limit of the number of vehicles to return, is supported.
+  It's the intention to support multiple output formats, but currently, just a fixed CSV format is supported.`
 )

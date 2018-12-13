@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"runtime"
@@ -37,6 +38,7 @@ func init() {
 		disableCmd DisableCommand
 		enableCmd  EnableCommand
 		serveCmd   ServeCommand
+		queryCmd   QueryCommand
 		verCmd     VersionCommand
 	)
 	globalOpts = &Options{}
@@ -50,6 +52,7 @@ func init() {
 	parser.AddCommand("disable", "disable vehicle", "disables a vehicle so it won't appear in lookups", &disableCmd)
 	parser.AddCommand("enable", "enable vehicle", "enables a vehicle so it will reappear in lookups", &enableCmd)
 	parser.AddCommand("serve", "serve", "starts autobot as a web server", &serveCmd)
+	parser.AddCommand("query", "query vehicle store", "queries/searches the vehicle store using filters and selectors", &queryCmd)
 	parser.AddCommand("version", "version", "displays the current build version of autobot", &verCmd)
 }
 
@@ -300,6 +303,22 @@ func (cmd *EnableCommand) Usage() string {
 // Execute runs the enable command.
 func (cmd *EnableCommand) Execute(opts []string) error {
 	return store.Enable(cmd.Hash)
+}
+
+// QueryCommand represents a query/search against the vehicle store.
+type QueryCommand struct {
+	Limit uint `short:"l" long:"limit" description:"Limit on number of vehicles to return" default:"0"`
+}
+
+// Usage prints help text to the user.
+func (cmd *QueryCommand) Usage() string {
+	return QueryUsage
+}
+
+// Execute performs a query against the vehicle store.
+func (cmd *QueryCommand) Execute(opts []string) error {
+	var out io.Writer = os.Stdout
+	return store.Query(out, int64(cmd.Limit))
 }
 
 // loadConfig loads the TOML configuration file with the specified name.

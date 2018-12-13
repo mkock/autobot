@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -406,4 +407,50 @@ func (vs *Store) LastLog() (LogEntry, error) {
 func (vs *Store) CountLog() (int, error) {
 	count, err := vs.store.ZCount(vs.opts.HistorySortedSet, "0", "0").Result()
 	return int(count), err
+}
+
+// Query performs a query/search agsinst the store and streams the results to the provided reader.
+func (vs *Store) Query(w io.Writer, limit int64) error {
+	titles := []interface{}{"hash", "country", "ident", "reg nr", "vin", "brand", "model", "fuel type", "first reg date"}
+	fmt.Fprintf(w, "%q,%q,%q,%q,%q,%q,%q,%q,%q\n", titles...)
+	var (
+		batch, progress int64
+		keys            []string
+		cur             uint64
+		err             error
+		res, props      []interface{}
+		strVeh          string
+		ok              bool
+		veh             Vehicle
+	)
+	props = make([]interface{}, 9)
+	batch = 100
+	progress = 0
+	// Looping over cursors 100 entries at a time.
+	for {
+		if keys, cur, err = vs.store.HScan(vs.opts.VehicleMap, cur, "", batch).Result(); err != nil {
+			return err
+		}
+		if res, err = vs.store.HMGet(vs.opts.VehicleMap, keys...).Result(); err != nil {
+			return err
+		}
+		// Looping over entries.
+		for _, iface := range res {
+			if strVeh, ok = iface.(string); ok {
+				if veh, err = unserializeVehicle(strVeh); err != nil {
+					return err
+				}
+				for i, prop := range veh.Slice() {
+					props[i] = prop
+				}
+				fmt.Fprintf(w, "%q,%q,%q,%q,%q,%q,%q,%q,%q\n", props...)
+			}
+		}
+		// Note: with this implementation, "limit" only works in increments of 100.
+		progress += batch
+		if cur == 0 || (limit > 0 && progress >= limit) {
+			break
+		}
+	}
+	return nil
 }

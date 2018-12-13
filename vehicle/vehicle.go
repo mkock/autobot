@@ -97,6 +97,16 @@ func (v Vehicle) FlexString(lb, leftPad string) string {
 	return txt.String()
 }
 
+// Slice returns most properties from Vehicle as a slice of strings, intended for use in CSV conversions.
+func (v Vehicle) Slice() [9]string {
+	hash := strconv.FormatUint(v.MetaData.Hash, 10)
+	country := RegCountryToString(v.MetaData.Country)
+	ident := strconv.FormatUint(v.MetaData.Ident, 10)
+	firstReg := v.FirstRegDate.Format("2006-01-02")
+	props := [9]string{hash, country, ident, v.RegNr, v.VIN, v.Brand, v.Model, v.FuelType, firstReg}
+	return props
+}
+
 // PrettyBrandName titles-cases the given brand name unless its length is 3 or below, in which case everything is
 // uppercased. This should handle most cases.
 func PrettyBrandName(brand string) string {
