@@ -24,14 +24,12 @@ func NewService() *Service {
 // excerpt concurrently while delivering the parsed vehicles on the "vehicles" channel. It will send the worker id on
 // the "done" channel for each worker when parsing has completed.
 func (service *Service) processFile(rc io.ReadCloser, numWorkers int, vehicles chan<- vehicle.Vehicle, done chan<- int) {
-	// Instantiate an XML parser.
-	parser := NewXMLParser()
 	lines := make(chan []string, numWorkers)
 
 	// Start the number of workers (parsers) determined by numWorkers.
 	log.Println("Importing...")
 	for i := 0; i < numWorkers; i++ {
-		go parser.ParseExcerpt(i, lines, vehicles, done)
+		go parseExcerpt(i, lines, vehicles, done)
 	}
 
 	// Preparations for the main loop.

@@ -9,17 +9,8 @@ import (
 	"github.com/mkock/autobot/vehicle"
 )
 
-// XMLParser represents an XML parser.
-type XMLParser struct {
-}
-
-// NewXMLParser creates a new XML parser.
-func NewXMLParser() *XMLParser {
-	return &XMLParser{}
-}
-
-// ParseExcerpt parses XML file using XML decoding.
-func (p *XMLParser) ParseExcerpt(id int, lines <-chan []string, parsed chan<- vehicle.Vehicle, done chan<- int) {
+// parseExcerpt parses XML file using XML decoding.
+func parseExcerpt(id int, lines <-chan []string, parsed chan<- vehicle.Vehicle, done chan<- int) {
 	var proc, keep int // How many excerpts did we process and keep?
 	var stat vehicleStat
 	for excerpt := range lines {
