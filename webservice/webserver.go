@@ -60,6 +60,7 @@ type APIError struct {
 type APIVehicle struct {
 	Hash         string `json:"hash"`
 	Country      string `json:"country"`
+	Type         string `json:"type"`
 	RegNr        string `json:"regNr"`
 	VIN          string `json:"vin"`
 	Brand        string `json:"brand"`
@@ -71,7 +72,7 @@ type APIVehicle struct {
 
 // vehicleToAPIType converts a vehicle.Vehicle into the local APIVehicle, which is used for the http request/response.
 func vehicleToAPIType(veh vehicle.Vehicle, fromCache bool) APIVehicle {
-	return APIVehicle{strconv.FormatUint(veh.MetaData.Hash, 10), vehicle.RegCountryToString(veh.MetaData.Country), veh.RegNr, veh.VIN, veh.Brand, veh.Model, veh.FuelType, veh.FirstRegDate.Format(dateFmt), fromCache}
+	return APIVehicle{strconv.FormatUint(veh.MetaData.Hash, 10), veh.MetaData.Country.String(), veh.Type.String(), veh.RegNr, veh.VIN, veh.Brand, veh.Model, veh.FuelType, veh.FirstRegDate.Format(dateFmt), fromCache}
 }
 
 // New initialises a new webserver. You need to start it by calling Serve().
@@ -181,7 +182,7 @@ func (srv *WebServer) handleLookup(w http.ResponseWriter, r *http.Request) {
 		mngr := srv.lookupMngr.FindServiceByCountry(regCountry)
 		if mngr == nil {
 			// No manager exists for that country, so let's give up.
-			fmt.Printf("No direct lookups supported for country %s\n", vehicle.RegCountryToString(regCountry))
+			fmt.Printf("No direct lookups supported for country %s\n", regCountry.String())
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}

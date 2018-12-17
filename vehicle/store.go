@@ -65,9 +65,11 @@ func NewStore(storeCnf config.MemStoreConfig, syncCnf config.SyncConfig) *Store 
 // Open connects to the vehicle store.
 func (vs *Store) Open() error {
 	vs.store = redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%d", vs.cnf.Host, vs.cnf.Port),
-		Password: vs.cnf.Password,
-		DB:       vs.cnf.DB,
+		Addr:         fmt.Sprintf("%s:%d", vs.cnf.Host, vs.cnf.Port),
+		Password:     vs.cnf.Password,
+		DB:           vs.cnf.DB,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
 	})
 	if _, err := vs.store.Ping().Result(); err != nil {
 		return err
@@ -128,8 +130,8 @@ func (vs *Store) writeToFile(vehicles List, outFile string) {
 	}()
 
 	// Write CSV data.
-	for _, vehicle := range vehicles {
-		_, err := out.WriteString(vehicle.String() + "\n")
+	for _, veh := range vehicles {
+		_, err := out.WriteString(veh.String() + "\n")
 		if err != nil {
 			fmt.Println("Unable to write to output file, unknown write error")
 		}
@@ -163,8 +165,8 @@ func (vs *Store) Sync(id SyncOpID, vehicles <-chan Vehicle, done <-chan bool) er
 }
 
 // serializeVehicle converts the given Vehicle to a string using JSON encoding.
-func serializeVehicle(vehicle Vehicle) (string, error) {
-	b, err := json.Marshal(vehicle)
+func serializeVehicle(veh Vehicle) (string, error) {
+	b, err := json.Marshal(veh)
 	if err != nil {
 		return "", err
 	}
@@ -173,23 +175,23 @@ func serializeVehicle(vehicle Vehicle) (string, error) {
 
 // unserializeVehicle converts the given string to a Vehicle using JSON decoding.
 func unserializeVehicle(str string) (Vehicle, error) {
-	var vehicle Vehicle
-	if err := json.Unmarshal([]byte(str), &vehicle); err != nil {
-		return vehicle, err
+	var veh Vehicle
+	if err := json.Unmarshal([]byte(str), &veh); err != nil {
+		return veh, err
 	}
-	return vehicle, nil
+	return veh, nil
 }
 
 // updateVehicle stores any changes made to the vehicle.
 // Note: for now, this function assumes that changes were made only to the metadata. If the vehicle base data
 // is changed, we need to generate a new hash and update the indexes.
-func (vs *Store) updateVehicle(vehicle Vehicle) error {
-	val, err := serializeVehicle(vehicle)
+func (vs *Store) updateVehicle(veh Vehicle) error {
+	val, err := serializeVehicle(veh)
 	if err != nil {
 		return err
 	}
 	// Store the vehicle.
-	hash := HashAsKey(vehicle.MetaData.Hash)
+	hash := HashAsKey(veh.MetaData.Hash)
 	if _, err = vs.store.HSet(vs.opts.VehicleMap, hash, val).Result(); err != nil {
 		return err
 	}
@@ -198,25 +200,25 @@ func (vs *Store) updateVehicle(vehicle Vehicle) error {
 
 // SyncVehicle synchronizes a single Vehicle with the memory store.
 // It returns a bool indicating whether the vehicle was added/updated or not.
-func (vs *Store) SyncVehicle(vehicle Vehicle) (bool, error) {
+func (vs *Store) SyncVehicle(veh Vehicle) (bool, error) {
 	mapName := vs.opts.VehicleMap
 	vinIndex := vs.opts.VINSortedSet
 	regIndex := vs.opts.RegNrSortedSet
-	hash := HashAsKey(vehicle.MetaData.Hash)
+	hash := HashAsKey(veh.MetaData.Hash)
 	exists, err := vs.store.HExists(mapName, hash).Result()
 	if err != nil || exists {
 		return false, err
 	}
-	if err := vs.updateVehicle(vehicle); err != nil {
+	if err := vs.updateVehicle(veh); err != nil {
 		return false, err
 	}
 	// Update the VIN index.
-	zVIN := redis.Z{Score: 0, Member: fmt.Sprintf("%d:%s:%s", vehicle.MetaData.Country, vehicle.VIN, hash)}
+	zVIN := redis.Z{Score: 0, Member: fmt.Sprintf("%d:%s:%s", veh.MetaData.Country, veh.VIN, hash)}
 	if _, err = vs.store.ZAdd(vinIndex, zVIN).Result(); err != nil {
 		return false, err
 	}
 	// Update the reg.nr index.
-	zReg := redis.Z{Score: 0, Member: fmt.Sprintf("%d:%s:%s", vehicle.MetaData.Country, vehicle.RegNr, hash)}
+	zReg := redis.Z{Score: 0, Member: fmt.Sprintf("%d:%s:%s", veh.MetaData.Country, veh.RegNr, hash)}
 	if _, err = vs.store.ZAdd(regIndex, zReg).Result(); err != nil {
 		return false, err
 	}
@@ -249,28 +251,28 @@ func (vs *Store) lookup(id, index string) (string, error) {
 
 // Enable enables the vehicle with the given hash value, if it exists.
 func (vs *Store) Enable(hash string) error {
-	vehicle, err := vs.lookupVehicleSimple(hash)
+	veh, err := vs.lookupVehicleSimple(hash)
 	if err != nil {
 		return err
 	}
-	if vehicle == (Vehicle{}) {
+	if veh == (Vehicle{}) {
 		return ErrNoSuchVehicle
 	}
-	vehicle.MetaData.Disabled = false
-	return vs.updateVehicle(vehicle)
+	veh.MetaData.Disabled = false
+	return vs.updateVehicle(veh)
 }
 
 // Disable disables the vehicle with the given hash value, if it exists.
 func (vs *Store) Disable(hash string) error {
-	vehicle, err := vs.lookupVehicleSimple(hash)
+	veh, err := vs.lookupVehicleSimple(hash)
 	if err != nil {
 		return err
 	}
-	if vehicle == (Vehicle{}) {
+	if veh == (Vehicle{}) {
 		return ErrNoSuchVehicle
 	}
-	vehicle.MetaData.Disabled = true
-	return vs.updateVehicle(vehicle)
+	veh.MetaData.Disabled = true
+	return vs.updateVehicle(veh)
 }
 
 // remove removes the member with the given id from the sorted set index of the given name.
@@ -329,24 +331,24 @@ func (vs *Store) lookupVehicleSimple(hash string) (Vehicle, error) {
 // reconstruct the index key that should be removed.
 // Disabled vehicles will be treated as if they don't exist.
 func (vs *Store) lookupVehicle(hash string, showDisabled bool, identifier, index string) (Vehicle, error) {
-	vehicle, err := vs.lookupVehicleSimple(hash)
+	veh, err := vs.lookupVehicleSimple(hash)
 	if err != nil {
-		return vehicle, err
+		return veh, err
 	}
-	if vehicle == (Vehicle{}) {
+	if veh == (Vehicle{}) {
 		// The index returned a hash value, but it does not exist in the vehicle store, so we delete the index.
 		if err := vs.remove(fmt.Sprintf("%s:%s", identifier, hash), index); err != nil {
 			fmt.Printf("Notice: unable to remove disconnected index for vehicle id %s", hash)
 		}
-	} else if vehicle.MetaData.Disabled && !showDisabled {
+	} else if veh.MetaData.Disabled && !showDisabled {
 		return Vehicle{}, nil
 	}
-	return vehicle, nil
+	return veh, nil
 }
 
-// Clear clears out the entire vehicle store, including indexes and the sync history.
+// Clear clears out the entire vehicle store, including indexes but not the sync history.
 func (vs *Store) Clear() error {
-	keys := [...]string{vs.opts.SyncedFileString, vs.opts.VehicleMap, vs.opts.RegNrSortedSet, vs.opts.VINSortedSet, vs.opts.HistorySortedSet}
+	keys := [...]string{vs.opts.SyncedFileString, vs.opts.VehicleMap, vs.opts.RegNrSortedSet, vs.opts.VINSortedSet}
 	if _, err := vs.store.Del(keys[:]...).Result(); err != nil {
 		return err
 	}
@@ -409,8 +411,32 @@ func (vs *Store) CountLog() (int, error) {
 	return int(count), err
 }
 
+// Query contains the search- and filter options for performing a query against the store.
+type Query struct {
+	Limit int64
+	Type  string
+}
+
+type preparedQuery struct {
+	limit       int64
+	vehicleType Type
+	byType      bool
+}
+
+func (pq preparedQuery) validates(v Vehicle) bool {
+	if pq.byType && v.Type == pq.vehicleType {
+		return true
+	}
+	return false
+}
+
+func prepareQuery(q Query) preparedQuery {
+	pq := preparedQuery{limit: q.Limit, vehicleType: TypeFromString(q.Type), byType: q.Type != ""}
+	return pq
+}
+
 // Query performs a query/search agsinst the store and streams the results to the provided reader.
-func (vs *Store) Query(w io.Writer, limit int64) error {
+func (vs *Store) Query(w io.Writer, q Query) error {
 	titles := []interface{}{"hash", "country", "ident", "reg nr", "vin", "brand", "model", "fuel type", "first reg date"}
 	fmt.Fprintf(w, "%q,%q,%q,%q,%q,%q,%q,%q,%q\n", titles...)
 	var (
@@ -426,7 +452,9 @@ func (vs *Store) Query(w io.Writer, limit int64) error {
 	props = make([]interface{}, 9)
 	batch = 100
 	progress = 0
-	// Looping over cursors 100 entries at a time.
+	// Prepare some querying parameters.
+	pq := prepareQuery(q)
+	// Loop over cursors 100 entries at a time.
 	for {
 		if keys, cur, err = vs.store.HScan(vs.opts.VehicleMap, cur, "", batch).Result(); err != nil {
 			return err
@@ -434,21 +462,27 @@ func (vs *Store) Query(w io.Writer, limit int64) error {
 		if res, err = vs.store.HMGet(vs.opts.VehicleMap, keys...).Result(); err != nil {
 			return err
 		}
-		// Looping over entries.
+		// Loop over entries.
 		for _, iface := range res {
-			if strVeh, ok = iface.(string); ok {
-				if veh, err = unserializeVehicle(strVeh); err != nil {
-					return err
-				}
-				for i, prop := range veh.Slice() {
-					props[i] = prop
-				}
-				fmt.Fprintf(w, "%q,%q,%q,%q,%q,%q,%q,%q,%q\n", props...)
+			if strVeh, ok = iface.(string); !ok {
+				continue
 			}
+			if veh, err = unserializeVehicle(strVeh); err != nil {
+				return err
+			}
+			// @TODO: We unserialize the vehicle before checking if it satisfies the query, which is probably
+			// a bit expensive. Alternatives?
+			if !pq.validates(veh) {
+				continue
+			}
+			for i, prop := range veh.Slice() {
+				props[i] = prop
+			}
+			fmt.Fprintf(w, "%q,%q,%q,%q,%q,%q,%q,%q,%q\n", props...)
 		}
 		// Note: with this implementation, "limit" only works in increments of 100.
 		progress += batch
-		if cur == 0 || (limit > 0 && progress >= limit) {
+		if cur == 0 || (q.Limit > 0 && progress >= q.Limit) {
 			break
 		}
 	}

@@ -21,6 +21,66 @@ const (
 	NO
 )
 
+// String returns the string representation of the RegCountry.
+func (reg RegCountry) String() string {
+	for key, val := range regCountryMap {
+		if val == reg {
+			return key
+		}
+	}
+	return "DK" // Default.
+}
+
+// Type represents the overall type of vehicle, ie. car, trailer, van etc.
+type Type int
+
+// List of supported vehicle types.
+const (
+	Unknown Type = iota
+	Car
+	Bus
+	Van
+	Truck
+	Trailer
+)
+
+// String returns the string representation of the vehicle type.
+func (t Type) String() string {
+	switch t {
+	case Car:
+		return "Car"
+	case Bus:
+		return "Bus"
+	case Van:
+		return "Van"
+	case Truck:
+		return "Truck"
+	case Trailer:
+		return "Trailer"
+	default:
+		return "Unknown"
+	}
+}
+
+// TypeFromString returns the Type that matches the given string (case insensitive match).
+// If TypeFromString does not find a direct match, Type.Unknown is returned.
+func TypeFromString(str string) Type {
+	switch strings.ToLower(str) {
+	case "car":
+		return Car
+	case "bus":
+		return Bus
+	case "van":
+		return Van
+	case "truck":
+		return Truck
+	case "trailer":
+		return Trailer
+	default:
+		return Unknown
+	}
+}
+
 // Meta contains metadata for each vehicle.
 type Meta struct {
 	Hash        uint64
@@ -35,6 +95,7 @@ type Meta struct {
 // As vehicles are persisted in Redis / Google Memory Store, they should not contain pointers.
 type Vehicle struct {
 	MetaData     Meta `hash:"ignore"`
+	Type         Type
 	RegNr        string
 	VIN          string
 	Brand        string
@@ -57,16 +118,6 @@ func RegCountryFromString(reg string) RegCountry {
 	return DK // Default.
 }
 
-// RegCountryToString takes a RegCountry and returns the string representation of it.
-func RegCountryToString(reg RegCountry) string {
-	for key, val := range regCountryMap {
-		if val == reg {
-			return key
-		}
-	}
-	return "DK" // Default.
-}
-
 // GenHash generates a unique hash value of the vehicle. The hash is stored in the vehicle metadata.
 func (v *Vehicle) GenHash() error {
 	hash, err := hashstructure.Hash(v, nil)
@@ -86,7 +137,7 @@ func (v Vehicle) String() string {
 func (v Vehicle) FlexString(lb, leftPad string) string {
 	var txt strings.Builder
 	fmt.Fprintf(&txt, "#%d (%s)%s", v.MetaData.Hash, DisabledAsString(v.MetaData.Disabled), lb)
-	fmt.Fprintf(&txt, "%sCountry: %s%s", leftPad, RegCountryToString(v.MetaData.Country), lb)
+	fmt.Fprintf(&txt, "%sCountry: %s%s", leftPad, v.MetaData.Country.String(), lb)
 	fmt.Fprintf(&txt, "%sIdent: %d%s", leftPad, v.MetaData.Ident, lb)
 	fmt.Fprintf(&txt, "%sRegNr: %s%s", leftPad, v.RegNr, lb)
 	fmt.Fprintf(&txt, "%sVIN: %s%s", leftPad, v.VIN, lb)
@@ -100,7 +151,7 @@ func (v Vehicle) FlexString(lb, leftPad string) string {
 // Slice returns most properties from Vehicle as a slice of strings, intended for use in CSV conversions.
 func (v Vehicle) Slice() [9]string {
 	hash := strconv.FormatUint(v.MetaData.Hash, 10)
-	country := RegCountryToString(v.MetaData.Country)
+	country := v.MetaData.Country.String()
 	ident := strconv.FormatUint(v.MetaData.Ident, 10)
 	firstReg := v.FirstRegDate.Format("2006-01-02")
 	props := [9]string{hash, country, ident, v.RegNr, v.VIN, v.Brand, v.Model, v.FuelType, firstReg}

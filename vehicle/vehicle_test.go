@@ -20,12 +20,12 @@ func TestRegCountryFromString(t *testing.T) {
 
 func TestRegCountryToString(t *testing.T) {
 	var actual, expected string
-	actual = RegCountryToString(RegCountry(0))
+	actual = RegCountry(0).String()
 	expected = "DK"
 	if actual != expected {
 		t.Fatalf("Expected %v but got %v", expected, actual)
 	}
-	actual = RegCountryToString(RegCountry(1))
+	actual = RegCountry(1).String()
 	expected = "NO"
 	if actual != expected {
 		t.Fatalf("Expected %v but got %v", expected, actual)

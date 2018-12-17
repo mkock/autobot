@@ -39,6 +39,23 @@ type nrpladeResponse struct {
 	RegStatus    string `json:"registration_status"`
 }
 
+func decodeType(vehType string) vehicle.Type {
+	switch vehType {
+	case "Personbil":
+		return vehicle.Car
+	case "Stor personbil":
+		return vehicle.Bus
+	case "Varebil":
+		return vehicle.Van
+	case "Lastbil":
+		return vehicle.Truck
+	case "Påhængsvogn":
+		return vehicle.Trailer
+	default:
+		return vehicle.Unknown
+	}
+}
+
 // decodeNrpladeBody does the decoding of the HTTP response into a vehicle.Vehicle.
 func decodeNrpladeBody(body []byte) (vehicle.Vehicle, error) {
 	reader := bytes.NewReader(body)
@@ -54,6 +71,7 @@ func decodeNrpladeBody(body []byte) (vehicle.Vehicle, error) {
 	}
 	vehicle := vehicle.Vehicle{
 		MetaData:     vehicle.Meta{},
+		Type:         decodeType(data.Data.Type),
 		RegNr:        data.Data.Registration,
 		VIN:          data.Data.Vin,
 		Brand:        data.Data.Brand,

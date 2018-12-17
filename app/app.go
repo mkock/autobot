@@ -307,7 +307,8 @@ func (cmd *EnableCommand) Execute(opts []string) error {
 
 // QueryCommand represents a query/search against the vehicle store.
 type QueryCommand struct {
-	Limit uint `short:"l" long:"limit" description:"Limit on number of vehicles to return" default:"0"`
+	Limit uint   `short:"l" long:"limit" description:"Limit on number of vehicles to return" default:"0"`
+	Type  string `short:"t" long:"type" description:"Type of vehicle to filter by: Car|Bus|Van|Truck|Trailer|Unknown"`
 }
 
 // Usage prints help text to the user.
@@ -318,7 +319,11 @@ func (cmd *QueryCommand) Usage() string {
 // Execute performs a query against the vehicle store.
 func (cmd *QueryCommand) Execute(opts []string) error {
 	var out io.Writer = os.Stdout
-	return store.Query(out, int64(cmd.Limit))
+	q := vehicle.Query{
+		Limit: int64(cmd.Limit),
+		Type:  cmd.Type,
+	}
+	return store.Query(out, q)
 }
 
 // loadConfig loads the TOML configuration file with the specified name.
