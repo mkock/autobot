@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"time"
 
 	"github.com/BurntSushi/toml"
 )
@@ -54,6 +55,26 @@ type WebServiceConfig struct {
 	Schedule string
 }
 
+type date struct {
+	time.Time
+}
+
+// UnmarshalText is used by the TOML package to parse dates.
+func (d *date) UnmarshalText(text []byte) error {
+	var (
+		str string
+		err error
+	)
+	str = string(text)
+	if str == "" {
+		return nil
+	}
+	if d.Time, err = time.Parse("2006-01-02", str); err != nil {
+		return err
+	}
+	return nil
+}
+
 // SyncConfig contains configuration related to the actual synchronization algorithm.
 type SyncConfig struct {
 	SyncedFileString string
@@ -61,6 +82,7 @@ type SyncConfig struct {
 	VINSortedSet     string
 	RegNrSortedSet   string
 	HistorySortedSet string
+	EarliestRegDate  date
 }
 
 // NewConfig returns a app configuration struct, loaded from a TOML file.

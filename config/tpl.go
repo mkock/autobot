@@ -32,6 +32,7 @@ VehicleMap = "autobot_vehicles"
 VINSortedSet = "autobot_vin_index"
 RegNrSortedSet = "autobot_regnr_index"
 HistorySortedSet = "autobot_history"
+EarliestRegDate = ""
 `
 
 // WriteEmptyConf writes a new, empty configuration file to the filename with the given name.

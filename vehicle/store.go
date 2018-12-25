@@ -144,17 +144,24 @@ func (vs *Store) writeToFile(vehicles List, outFile string) {
 // This data is stored on the syncOp.
 // @TODO Consider running "syncVehicle" in a go routine for faster execution speed.
 func (vs *Store) Sync(id SyncOpID, vehicles <-chan Vehicle, done <-chan bool) error {
+	var (
+		ok      bool
+		err     error
+		vehicle Vehicle
+	)
 	op := vs.getOp(id)
 	for {
 		select {
-		case vehicle := <-vehicles:
+		case vehicle = <-vehicles:
 			op.processed++
-			ok, err := vs.SyncVehicle(vehicle)
-			if err != nil {
-				return err
-			}
-			if ok {
-				op.synced++
+			if vehicle.FirstRegDate.After(vs.opts.EarliestRegDate.Time) {
+				ok, err = vs.SyncVehicle(vehicle)
+				if err != nil {
+					return err
+				}
+				if ok {
+					op.synced++
+				}
 			}
 		case <-done:
 			vs.Log(op.String())
