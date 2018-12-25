@@ -47,6 +47,7 @@ func parseExcerpt(id int, lines <-chan []string, parsed chan<- vehicle.Vehicle, 
 				VIN:          strings.ToUpper(stat.Info.VIN),
 				Brand:        vehicle.PrettyBrandName(stat.Info.Designation.BrandTypeName),
 				Model:        stat.Info.Designation.Model.Name, // @TODO Title-case model name? Probably difficult.
+				Variant:      stat.Info.Designation.Variant.Name,
 				FuelType:     vehicle.PrettyFuelType(stat.Info.Engine.Fuel.FuelType),
 				FirstRegDate: regDate,
 			}

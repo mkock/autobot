@@ -101,6 +101,7 @@ type Vehicle struct {
 	Brand        string
 	Model        string
 	FuelType     string
+	Variant      string
 	FirstRegDate time.Time
 }
 
@@ -143,18 +144,19 @@ func (v Vehicle) FlexString(lb, leftPad string) string {
 	fmt.Fprintf(&txt, "%sVIN: %s%s", leftPad, v.VIN, lb)
 	fmt.Fprintf(&txt, "%sBrand: %s%s", leftPad, v.Brand, lb)
 	fmt.Fprintf(&txt, "%sModel: %s%s", leftPad, v.Model, lb)
+	fmt.Fprintf(&txt, "%sVariant: %s%s", leftPad, v.Variant, lb)
 	fmt.Fprintf(&txt, "%sFuelType: %s%s", leftPad, v.FuelType, lb)
 	fmt.Fprintf(&txt, "%sRegDate: %s%s", leftPad, v.FirstRegDate.Format("2006-01-02"), lb)
 	return txt.String()
 }
 
 // Slice returns most properties from Vehicle as a slice of strings, intended for use in CSV conversions.
-func (v Vehicle) Slice() [9]string {
+func (v Vehicle) Slice() [10]string {
 	hash := strconv.FormatUint(v.MetaData.Hash, 10)
 	country := v.MetaData.Country.String()
 	ident := strconv.FormatUint(v.MetaData.Ident, 10)
 	firstReg := v.FirstRegDate.Format("2006-01-02")
-	props := [9]string{hash, country, ident, v.RegNr, v.VIN, v.Brand, v.Model, v.FuelType, firstReg}
+	props := [10]string{hash, country, ident, v.RegNr, v.VIN, v.Brand, v.Model, v.Variant, v.FuelType, firstReg}
 	return props
 }
 

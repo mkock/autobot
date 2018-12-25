@@ -82,3 +82,129 @@ func TestPrettyFuelType(t *testing.T) {
 		}
 	}
 }
+
+func TestQueryValidates(t *testing.T) {
+	vehicles := map[string]Vehicle{
+		"FordMondeo": Vehicle{
+			Type:         Car,
+			Brand:        "Ford",
+			Model:        "Mondeo",
+			FuelType:     "Benzin",
+			FirstRegDate: time.Now(),
+		},
+		"ToyotaCorolla": Vehicle{
+			Type:         Car,
+			Brand:        "Toyota",
+			Model:        "Corolla",
+			FuelType:     "Benzin",
+			FirstRegDate: time.Now(),
+		},
+		"FordFiesta": Vehicle{
+			Type:         Car,
+			Brand:        "Ford",
+			Model:        "Fiesta",
+			FuelType:     "Benzin",
+			FirstRegDate: time.Now(),
+		},
+	}
+	results := map[string]bool{
+		"FordMondeo":    true,
+		"ToyotaCorolla": false,
+		"FordFiesta":    true,
+	}
+	q := Query{
+		Limit: 10,
+		Brand: "Ford",
+	}
+	pq := prepareQuery(q)
+	for name, veh := range vehicles {
+		valid := pq.validates(veh)
+		if results[name] != valid {
+			t.Fatalf("Expected %q to validate query", name)
+		}
+	}
+}
+func TestQueryValidatesMultiple(t *testing.T) {
+	vehicles := map[string]Vehicle{
+		"FordMondeo": Vehicle{
+			Type:         Car,
+			Brand:        "Ford",
+			Model:        "Mondeo",
+			FuelType:     "Benzin",
+			FirstRegDate: time.Now(),
+		},
+		"ToyotaCorolla": Vehicle{
+			Type:         Car,
+			Brand:        "Toyota",
+			Model:        "Corolla",
+			FuelType:     "Benzin",
+			FirstRegDate: time.Now(),
+		},
+		"FordFiesta#1": Vehicle{
+			Type:         Car,
+			Brand:        "Ford",
+			Model:        "Fiesta",
+			FuelType:     "Benzin",
+			FirstRegDate: time.Now(),
+		},
+		"FordFiesta#2": Vehicle{
+			Type:         Car,
+			Brand:        "Ford",
+			Model:        "Fiesta",
+			FuelType:     "Benzin",
+			FirstRegDate: time.Now(),
+		},
+	}
+	results := map[string]bool{
+		"FordMondeo":    false,
+		"ToyotaCorolla": false,
+		"FordFiesta#1":  true,
+		"FordFiesta#2":  true,
+	}
+	q := Query{
+		Limit: 10,
+		Brand: "Ford",
+		Model: "Fiesta",
+	}
+	pq := prepareQuery(q)
+	for name, veh := range vehicles {
+		valid := pq.validates(veh)
+		if results[name] != valid {
+			t.Fatalf("Expected validation of %q to equal %v", name, results[name])
+		}
+	}
+}
+
+func TestQueryValidatesEmptyCond(t *testing.T) {
+	vehicles := map[string]Vehicle{
+		"FordMondeo": Vehicle{
+			Type:         Car,
+			Brand:        "Ford",
+			Model:        "Mondeo",
+			FuelType:     "Benzin",
+			FirstRegDate: time.Now(),
+		},
+		"ToyotaCorolla": Vehicle{
+			Type:         Car,
+			Brand:        "Toyota",
+			Model:        "Corolla",
+			FuelType:     "Benzin",
+			FirstRegDate: time.Now(),
+		},
+	}
+	results := map[string]bool{
+		"FordMondeo":    true,
+		"ToyotaCorolla": true,
+	}
+	q := Query{
+		Limit: 10,
+		Type:  "",
+	}
+	pq := prepareQuery(q)
+	for name, veh := range vehicles {
+		valid := pq.validates(veh)
+		if results[name] != valid {
+			t.Fatalf("Expected validation of %q to equal %v", name, results[name])
+		}
+	}
+}

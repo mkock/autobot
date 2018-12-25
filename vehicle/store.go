@@ -142,7 +142,6 @@ func (vs *Store) writeToFile(vehicles List, outFile string) {
 // Sync reads from channel "vehicles" and synchronizes each one with the store. It stops when receiving a bool on
 // channel "done". Along the way, it keeps track of the number of vehicles that were processed and synchronized.
 // This data is stored on the syncOp.
-// @TODO Consider running "syncVehicle" in a go routine for faster execution speed.
 func (vs *Store) Sync(id SyncOpID, vehicles <-chan Vehicle, done <-chan bool) error {
 	var (
 		ok      bool
@@ -154,6 +153,7 @@ func (vs *Store) Sync(id SyncOpID, vehicles <-chan Vehicle, done <-chan bool) er
 		select {
 		case vehicle = <-vehicles:
 			op.processed++
+			// Only synchronise vehicles that satisfy the limit on reg.date.
 			if vehicle.FirstRegDate.After(vs.opts.EarliestRegDate.Time) {
 				ok, err = vs.SyncVehicle(vehicle)
 				if err != nil {
@@ -418,32 +418,8 @@ func (vs *Store) CountLog() (int, error) {
 	return int(count), err
 }
 
-// Query contains the search- and filter options for performing a query against the store.
-type Query struct {
-	Limit int64
-	Type  string
-}
-
-type preparedQuery struct {
-	limit       int64
-	vehicleType Type
-	byType      bool
-}
-
-func (pq preparedQuery) validates(v Vehicle) bool {
-	if pq.byType && v.Type == pq.vehicleType {
-		return true
-	}
-	return false
-}
-
-func prepareQuery(q Query) preparedQuery {
-	pq := preparedQuery{limit: q.Limit, vehicleType: TypeFromString(q.Type), byType: q.Type != ""}
-	return pq
-}
-
-// Query performs a query/search agsinst the store and streams the results to the provided reader.
-func (vs *Store) Query(w io.Writer, q Query) error {
+// QueryTo performs a query/search agsinst the store and streams the results to the provided reader.
+func (vs *Store) QueryTo(w io.Writer, q Query) error {
 	titles := []interface{}{"hash", "country", "ident", "reg nr", "vin", "brand", "model", "fuel type", "first reg date"}
 	fmt.Fprintf(w, "%q,%q,%q,%q,%q,%q,%q,%q,%q\n", titles...)
 	var (
@@ -456,7 +432,7 @@ func (vs *Store) Query(w io.Writer, q Query) error {
 		ok              bool
 		veh             Vehicle
 	)
-	props = make([]interface{}, 9)
+	props = make([]interface{}, 10)
 	batch = 100
 	progress = 0
 	// Prepare some querying parameters.
@@ -477,7 +453,8 @@ func (vs *Store) Query(w io.Writer, q Query) error {
 			if veh, err = unserializeVehicle(strVeh); err != nil {
 				return err
 			}
-			// @TODO: We unserialize the vehicle before checking if it satisfies the query, which is probably
+			// @TODO: We unserialize the vehicle before checking if
+			// it satisfies the query, which is probably
 			// a bit expensive. Alternatives?
 			if !pq.validates(veh) {
 				continue
@@ -485,10 +462,9 @@ func (vs *Store) Query(w io.Writer, q Query) error {
 			for i, prop := range veh.Slice() {
 				props[i] = prop
 			}
-			fmt.Fprintf(w, "%q,%q,%q,%q,%q,%q,%q,%q,%q\n", props...)
+			fmt.Fprintf(w, "%q,%q,%q,%q,%q,%q,%q,%q,%q,%q\n", props...)
+			progress++
 		}
-		// Note: with this implementation, "limit" only works in increments of 100.
-		progress += batch
 		if cur == 0 || (q.Limit > 0 && progress >= q.Limit) {
 			break
 		}
