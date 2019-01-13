@@ -28,11 +28,6 @@ const (
 	errVehicleOp
 )
 
-type status struct {
-	Status string `json:"status"`
-	Uptime string `json:"uptime"`
-}
-
 // WebServer represents the REST-API part of autobot.
 type WebServer struct {
 	startTime  time.Time
@@ -46,22 +41,6 @@ type APIError struct {
 	HTTPCode int    `json:"-"`
 	Code     int    `json:"code,omitempty"`
 	Message  string `json:"message"`
-}
-
-// APIVehicle is the API representation of Vehicle. It has a JSON representation.
-// Some fields that are only for internal use, are left out, and others are converted into something more readable.
-type APIVehicle struct {
-	Hash         string `json:"hash"`
-	Country      string `json:"country"`
-	Type         string `json:"type"`
-	RegNr        string `json:"regNr"`
-	VIN          string `json:"vin"`
-	Brand        string `json:"brand"`
-	Model        string `json:"model"`
-	Variant      string `json:"variant"`
-	FuelType     string `json:"fuelType"`
-	FirstRegDate string `json:"firstRegDate"`
-	FromCache    bool   `json:"fromCache"`
 }
 
 // New initialises a new webserver. You need to start it by calling Serve().

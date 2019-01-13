@@ -6,6 +6,11 @@ import (
 	"time"
 )
 
+type status struct {
+	Status string `json:"status"`
+	Uptime string `json:"uptime"`
+}
+
 // handleStatus returns a small JSON struct with the various information such as service uptime and status.
 func (srv *WebServer) handleStatus(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {

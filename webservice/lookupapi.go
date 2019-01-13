@@ -9,6 +9,22 @@ import (
 	"github.com/mkock/autobot/vehicle"
 )
 
+// APIVehicle is the API representation of Vehicle. It has a JSON representation.
+// Some fields that are only for internal use, are left out, and others are converted into something more readable.
+type APIVehicle struct {
+	Hash         string `json:"hash"`
+	Country      string `json:"country"`
+	Type         string `json:"type"`
+	RegNr        string `json:"regNr"`
+	VIN          string `json:"vin"`
+	Brand        string `json:"brand"`
+	Model        string `json:"model"`
+	Variant      string `json:"variant"`
+	FuelType     string `json:"fuelType"`
+	FirstRegDate string `json:"firstRegDate"`
+	FromCache    bool   `json:"fromCache"`
+}
+
 // vehicleToAPIType converts a vehicle.Vehicle into the local APIVehicle, which is used for the http request/response.
 func vehicleToAPIType(veh vehicle.Vehicle, fromCache bool) APIVehicle {
 	return APIVehicle{strconv.FormatUint(veh.MetaData.Hash, 10), veh.MetaData.Country.String(), veh.Type.String(), veh.RegNr, veh.VIN, veh.Brand, veh.Model, veh.Variant, veh.FuelType, veh.FirstRegDate.Format(dateFmt), fromCache}
