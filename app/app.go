@@ -42,6 +42,12 @@ func monitorRuntime() {
 	}
 }
 
+// connecter is an interface that, if satisfied by a go-flags Commander, allows us to skip connecting to the
+// VehicleStore for commands where "isConnected" returns false.
+type connecter interface {
+	IsConnected() bool
+}
+
 // Options contains command-line arguments parsed upon application initialisation.
 type Options struct {
 	ConfigFile string `short:"c" long:"config-file" required:"no" default:"config.toml" description:"Application configuration file in TOML format"`
@@ -54,9 +60,8 @@ func loadConfig(fname string) (config.Config, error) {
 
 // bootstrap loads the app configuration and connects to the vehicle store.
 func bootstrap(cmd flags.Commander, args []string) error {
-	// Do not bootstrap the usual stuff when we are simply generating a config file.
-	// @TODO: We're bypassing go-flags here. Consider refactoring this to make it less fragile.
-	if len(os.Args) > 1 && os.Args[1] == "init" {
+	// Do not bootstrap the usual stuff when we are not dealing with a connected command.
+	if t, ok := cmd.(connecter); ok && !t.IsConnected() {
 		return cmd.Execute(args)
 	}
 	// Load the configuration file passed via the CLI.
@@ -71,9 +76,7 @@ func bootstrap(cmd flags.Commander, args []string) error {
 	if err := store.Open(); err != nil {
 		return err
 	}
-	defer func() {
-		store.Close()
-	}()
+	defer store.Close()
 
 	// Initialise and configure the lookup manager.
 	// @TODO: We need to loop over LookupConfigs and add a manager for each, dynamically.
@@ -89,7 +92,6 @@ func bootstrap(cmd flags.Commander, args []string) error {
 func Start() error {
 	// This will run the command that matches the command-line options.
 	if _, err := parser.Parse(); err != nil {
-
 		if flagErr, ok := err.(*flags.Error); ok && flagErr.Type == flags.ErrHelp {
 			return nil // This is to avoid help messages from being printed twice.
 		}

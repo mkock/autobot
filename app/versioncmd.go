@@ -21,3 +21,8 @@ func (cmd *VersionCommand) Execute(opts []string) error {
 	fmt.Printf("Autobot version: %s\n", version)
 	return nil
 }
+
+// IsConnected reports whether or not this command needs to connect to the VehicleStore.
+func (cmd *VersionCommand) IsConnected() bool {
+	return false
+}

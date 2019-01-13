@@ -28,3 +28,8 @@ func (cmd *InitCommand) Execute(opts []string) error {
 	fmt.Println("Wrote config.toml")
 	return nil
 }
+
+// IsConnected reports whether or not this command needs to connect to the VehicleStore.
+func (cmd *InitCommand) IsConnected() bool {
+	return false
+}

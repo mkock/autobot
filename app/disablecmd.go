@@ -20,3 +20,8 @@ func (cmd *DisableCommand) Usage() string {
 func (cmd *DisableCommand) Execute(opts []string) error {
 	return store.Disable(cmd.Hash)
 }
+
+// IsConnected reports whether or not this command needs to connect to the VehicleStore.
+func (cmd *DisableCommand) IsConnected() bool {
+	return true
+}

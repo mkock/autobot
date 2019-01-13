@@ -75,3 +75,8 @@ func (cmd *SyncCommand) Execute(opts []string) error {
 
 	return nil
 }
+
+// IsConnected reports whether or not this command needs to connect to the VehicleStore.
+func (cmd *SyncCommand) IsConnected() bool {
+	return true
+}

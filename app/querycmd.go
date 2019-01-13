@@ -39,3 +39,8 @@ func (cmd *QueryCommand) Execute(opts []string) error {
 	}
 	return store.QueryTo(out, q)
 }
+
+// IsConnected reports whether or not this command needs to connect to the VehicleStore.
+func (cmd *QueryCommand) IsConnected() bool {
+	return true
+}

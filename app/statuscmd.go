@@ -32,3 +32,8 @@ func (cmd *StatusCommand) Execute(opts []string) error {
 	fmt.Println(entry.String())
 	return nil
 }
+
+// IsConnected reports whether or not this command needs to connect to the VehicleStore.
+func (cmd *StatusCommand) IsConnected() bool {
+	return true
+}

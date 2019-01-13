@@ -55,3 +55,8 @@ func (cmd *LookupCommand) Execute(opts []string) error {
 	fmt.Println(veh.FlexString("\n", "  "))
 	return nil
 }
+
+// IsConnected reports whether or not this command needs to connect to the VehicleStore.
+func (cmd *LookupCommand) IsConnected() bool {
+	return true
+}
