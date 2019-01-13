@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"strings"
 	"time"
@@ -19,14 +20,16 @@ type SyncScheduler struct {
 	cnf       config.Config
 	store     *vehicle.Store
 	schedExpr *cronexpr.Expression
+	logger    *log.Logger
 }
 
 // New returns a new scheduler that schedules and runs data synchronisation with the vehicle store
 // on fixed intervals defined by the provided configuration. For scheduling, the common cron time expression syntax
 // is used, but in the five-field variant where the fields have the following interpretation:
 // "minute hours day-of-month month day-of-week"
-func New(cnf config.Config, store *vehicle.Store) *SyncScheduler {
-	return &SyncScheduler{cnf, store, nil}
+func New(cnf config.Config, store *vehicle.Store, logWriter io.Writer) *SyncScheduler {
+	logger := log.New(logWriter, "", log.Ldate|log.Ltime)
+	return &SyncScheduler{cnf, store, nil, logger}
 }
 
 // parseTimeExpr parses the schedule given in the Config and assigns a parsed (cron-style) time expression
@@ -62,7 +65,7 @@ func (sched *SyncScheduler) repeatSync(stop <-chan bool) {
 		next = sched.schedExpr.Next(now)
 		dur = next.Sub(now)
 		if int64(dur) < 0 {
-			fmt.Println("Invalid duration") // This should never happen, but let's check.
+			sched.logger.Println("Invalid duration") // This should never happen, but let's check.
 			return
 		}
 		select {
@@ -71,7 +74,7 @@ func (sched *SyncScheduler) repeatSync(stop <-chan bool) {
 		case _ = <-time.After(dur):
 			// The call to doSync is synchronous so we don't risk starting several sync jobs on top of each other.
 			if err := sched.doSync(); err != nil {
-				log.Printf("Sync error: %s, will retry later", err)
+				sched.logger.Printf("Sync error: %s, will retry later", err)
 			}
 		}
 	}
@@ -94,16 +97,16 @@ func (sched *SyncScheduler) doSync() error {
 		return err
 	}
 	if latest == "" || latest == fname {
-		log.Print("Sync: No new stat file detected")
+		sched.logger.Print("Sync: No new stat file detected")
 		return nil
 	}
-	log.Printf("Sync: synchronising %s from DMR...\n", latest)
+	sched.logger.Printf("Sync: synchronising %s from DMR...\n", latest)
 	src, err := prov.Provide(latest)
 	if err != nil {
 		return err
 	}
 	if src == nil {
-		log.Println("Sync: no stat file detected. Aborting")
+		sched.logger.Println("Sync: no stat file detected. Aborting")
 		return nil
 	}
 	id := sched.store.NewSyncOp(dataprovider.ProvTypeString(dataprovider.FtpProv))
@@ -113,7 +116,7 @@ func (sched *SyncScheduler) doSync() error {
 	if err = sched.store.Sync(id, vehicles, done); err != nil {
 		return err
 	}
-	fmt.Println(sched.store.Status(id))
+	sched.logger.Println(sched.store.Status(id))
 
 	if err = sched.store.SetLastSynced(latest); err != nil {
 		return err
