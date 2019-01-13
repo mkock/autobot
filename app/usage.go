@@ -14,6 +14,7 @@ var (
   - GET /                    responds with a service status
   - GET /vehiclestore/status responds with a status of the vehicle store
   - GET /lookup              performs a vehicle lookup. Query params: country, hash, regnr or vin
+  - PATCH /vehicle           enables/disables a vehicle based on the given operation
   
   Example of a vehicle lookup:
   - GET /lookup?regnr=BK33877&country=dk

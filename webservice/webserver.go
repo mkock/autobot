@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 	"time"
 
@@ -32,12 +31,6 @@ const (
 type status struct {
 	Status string `json:"status"`
 	Uptime string `json:"uptime"`
-}
-
-type storeStatus struct {
-	HistorySize  int       `json:"historySize"`
-	LastStatusAt time.Time `json:"lastStatusAt"`
-	LastStatus   string    `json:"lastStatusMessage"`
 }
 
 // WebServer represents the REST-API part of autobot.
@@ -69,11 +62,6 @@ type APIVehicle struct {
 	FuelType     string `json:"fuelType"`
 	FirstRegDate string `json:"firstRegDate"`
 	FromCache    bool   `json:"fromCache"`
-}
-
-// vehicleToAPIType converts a vehicle.Vehicle into the local APIVehicle, which is used for the http request/response.
-func vehicleToAPIType(veh vehicle.Vehicle, fromCache bool) APIVehicle {
-	return APIVehicle{strconv.FormatUint(veh.MetaData.Hash, 10), veh.MetaData.Country.String(), veh.Type.String(), veh.RegNr, veh.VIN, veh.Brand, veh.Model, veh.Variant, veh.FuelType, veh.FirstRegDate.Format(dateFmt), fromCache}
 }
 
 // New initialises a new webserver. You need to start it by calling Serve().

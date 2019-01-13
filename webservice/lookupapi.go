@@ -4,9 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/mkock/autobot/vehicle"
 )
+
+// vehicleToAPIType converts a vehicle.Vehicle into the local APIVehicle, which is used for the http request/response.
+func vehicleToAPIType(veh vehicle.Vehicle, fromCache bool) APIVehicle {
+	return APIVehicle{strconv.FormatUint(veh.MetaData.Hash, 10), veh.MetaData.Country.String(), veh.Type.String(), veh.RegNr, veh.VIN, veh.Brand, veh.Model, veh.Variant, veh.FuelType, veh.FirstRegDate.Format(dateFmt), fromCache}
+}
 
 // handleLookup allows vehicle lookups based on hash value, VIN or registration number. A country must always be
 // provided.
