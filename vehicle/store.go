@@ -21,10 +21,11 @@ var (
 
 // Store represents a Redis-compatible memory store such as Redis or Google Memory Store.
 type Store struct {
-	cnf   config.MemStoreConfig
-	opts  config.SyncConfig
-	store *redis.Client
-	ops   []syncOp
+	cnf    config.MemStoreConfig
+	opts   config.SyncConfig
+	store  *redis.Client
+	ops    []syncOp
+	logger io.Writer
 }
 
 // SyncOpID is an integer reference to a running synchronization operation.
@@ -58,8 +59,8 @@ func (op *syncOp) String() string {
 }
 
 // NewStore returns a new Store, which you can then interact with in order to start sync operations etc.
-func NewStore(storeCnf config.MemStoreConfig, syncCnf config.SyncConfig) *Store {
-	return &Store{cnf: storeCnf, opts: syncCnf}
+func NewStore(storeCnf config.MemStoreConfig, syncCnf config.SyncConfig, logger io.Writer) *Store {
+	return &Store{cnf: storeCnf, opts: syncCnf, logger: logger}
 }
 
 // Open connects to the vehicle store.
@@ -120,7 +121,7 @@ func (vs *Store) finalize(id SyncOpID) {
 func (vs *Store) writeToFile(vehicles List, outFile string) {
 	out, err := os.Create(outFile)
 	if err != nil {
-		fmt.Printf("Unable to open output file %v for writing.\n", outFile)
+		fmt.Fprintf(vs.logger, "Unable to open output file %v for writing.\n", outFile)
 		return
 	}
 	defer func() {
@@ -133,10 +134,10 @@ func (vs *Store) writeToFile(vehicles List, outFile string) {
 	for _, veh := range vehicles {
 		_, err := out.WriteString(veh.String() + "\n")
 		if err != nil {
-			fmt.Println("Unable to write to output file, unknown write error")
+			fmt.Fprintln(vs.logger, "Unable to write to output file, unknown write error")
 		}
 	}
-	fmt.Println("Wrote processed vehicle list to out.csv")
+	fmt.Fprintln(vs.logger, "Wrote processed vehicle list to out.csv")
 }
 
 // Sync reads from channel "vehicles" and synchronizes each one with the store. It stops when receiving a bool on
@@ -345,7 +346,7 @@ func (vs *Store) lookupVehicle(hash string, showDisabled bool, identifier, index
 	if veh == (Vehicle{}) {
 		// The index returned a hash value, but it does not exist in the vehicle store, so we delete the index.
 		if err := vs.remove(fmt.Sprintf("%s:%s", identifier, hash), index); err != nil {
-			fmt.Printf("Notice: unable to remove disconnected index for vehicle id %s", hash)
+			fmt.Fprintf(vs.logger, "Notice: unable to remove disconnected index for vehicle id %s", hash)
 		}
 	} else if veh.MetaData.Disabled && !showDisabled {
 		return Vehicle{}, nil

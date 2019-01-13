@@ -67,7 +67,7 @@ func bootstrap(cmd flags.Commander, args []string) error {
 	}
 
 	// Connect to the vehicle store.
-	store = vehicle.NewStore(conf.MemStore, conf.Sync)
+	store = vehicle.NewStore(conf.MemStore, conf.Sync, os.Stdout)
 	if err := store.Open(); err != nil {
 		return err
 	}
