@@ -143,6 +143,7 @@ func (srv *WebServer) handleStoreStatus(w http.ResponseWriter, r *http.Request) 
 
 // handleLookup allows vehicle lookups based on hash value, VIN or registration number. A country must always be
 // provided.
+// @TODO: There is too much business logic here; put it somewhere else.
 func (srv *WebServer) handleLookup(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusNotFound)
