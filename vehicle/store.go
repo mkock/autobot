@@ -1,7 +1,6 @@
 package vehicle
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -28,36 +27,6 @@ type Store struct {
 	logger io.Writer
 }
 
-// SyncOpID is an integer reference to a running synchronization operation.
-type SyncOpID int
-
-// syncOp represents a synchronization operation: when it started, how long it took, where it synced from
-// and how many vehicles were processed and synced, respectively.
-type syncOp struct {
-	id        SyncOpID
-	started   time.Time
-	duration  time.Duration
-	source    string
-	processed int
-	synced    int
-}
-
-// LogEntry contains two parts: a timestamp (logging time) and a message.
-type LogEntry struct {
-	LoggedAt time.Time
-	Message  string
-}
-
-// String displays a human readable log message.
-func (e LogEntry) String() string {
-	return e.LoggedAt.Format("2006-01-02T15:04:04 ") + e.Message
-}
-
-// String returns a string with some status information on the operation.
-func (op *syncOp) String() string {
-	return fmt.Sprintf("%s sync status - began: %s, duration: %s. Summary: synced %d of %d vehicles", strings.ToUpper(op.source), op.started.Format("2006-01-02T15:04:05"), op.duration.Truncate(time.Second), op.synced, op.processed)
-}
-
 // NewStore returns a new Store, which you can then interact with in order to start sync operations etc.
 func NewStore(storeCnf config.MemStoreConfig, syncCnf config.SyncConfig, logger io.Writer) *Store {
 	return &Store{cnf: storeCnf, opts: syncCnf, logger: logger}
@@ -72,10 +41,8 @@ func (vs *Store) Open() error {
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	})
-	if _, err := vs.store.Ping().Result(); err != nil {
-		return err
-	}
-	return nil
+	_, err := vs.store.Ping().Result()
+	return err
 }
 
 // Close disconnects from the memory store.
@@ -109,11 +76,10 @@ func (vs *Store) getOp(id SyncOpID) *syncOp {
 // finalize calculates the total duration of the sync operation and pushes a stringified status result to mem-store.
 func (vs *Store) finalize(id SyncOpID) {
 	op := vs.getOp(id)
-	end := time.Now()
-	op.duration = end.Sub(op.started)
+	op.End()
 	if _, err := vs.store.LPush("ops", op.String()).Result(); err != nil {
 		// @TODO: Perhaps we don't need to panic here?
-		panic(fmt.Sprintf("unable to finalize sync operation"))
+		panic("unable to finalize sync operation")
 	}
 }
 
@@ -172,29 +138,11 @@ func (vs *Store) Sync(id SyncOpID, vehicles <-chan Vehicle, done <-chan bool) er
 	}
 }
 
-// serializeVehicle converts the given Vehicle to a string using JSON encoding.
-func serializeVehicle(veh Vehicle) (string, error) {
-	b, err := json.Marshal(veh)
-	if err != nil {
-		return "", err
-	}
-	return string(b), nil
-}
-
-// unserializeVehicle converts the given string to a Vehicle using JSON decoding.
-func unserializeVehicle(str string) (Vehicle, error) {
-	var veh Vehicle
-	if err := json.Unmarshal([]byte(str), &veh); err != nil {
-		return veh, err
-	}
-	return veh, nil
-}
-
 // updateVehicle stores any changes made to the vehicle.
 // Note: for now, this function assumes that changes were made only to the metadata. If the vehicle base data
 // is changed, we need to generate a new hash and update the indexes.
 func (vs *Store) updateVehicle(veh Vehicle) error {
-	val, err := serializeVehicle(veh)
+	val, err := veh.Marshal()
 	if err != nil {
 		return err
 	}
@@ -319,18 +267,17 @@ func (vs *Store) LookupByHash(hash string) (Vehicle, error) {
 
 // lookupVehicleSimple performs a vehicle lookup without any other processing.
 func (vs *Store) lookupVehicleSimple(hash string) (Vehicle, error) {
+	var v Vehicle
 	exists, err := vs.store.HExists(vs.opts.VehicleMap, hash).Result()
+	if err != nil || !exists {
+		return v, err
+	}
+	str, err := vs.store.HGet(vs.opts.VehicleMap, hash).Result()
 	if err != nil {
-		return Vehicle{}, err
+		return v, err
 	}
-	if exists {
-		str, err := vs.store.HGet(vs.opts.VehicleMap, hash).Result()
-		if err != nil {
-			return Vehicle{}, err
-		}
-		return unserializeVehicle(str)
-	}
-	return Vehicle{}, err
+	v.Unmarshal(str)
+	return v, nil
 }
 
 // lookupVehicle attempts to locate the vehicle with the given hash in the vehicle store.
@@ -387,30 +334,18 @@ func (vs *Store) Log(msg string) error {
 	return nil
 }
 
-// unmarshalLogEntry takes a string containing exactly one colon and returns a LogEntry with a timestamp parsed
-// from the first value (before the colon), and an unparsed message (after the colon).
-func unmarshalLogEntry(entry string) (LogEntry, error) {
-	log := LogEntry{}
-	if !strings.Contains(entry, ":") {
-		return log, fmt.Errorf("history: log entry contains an unrecognised format: %s", entry)
-	}
-	parts := strings.SplitAfterN(entry, ":", 2)
-	loggedAt, err := time.Parse("20060102T150405", parts[0][0:len(parts[0])-1])
-	if err != nil {
-		return log, err
-	}
-	log.LoggedAt = loggedAt
-	log.Message = parts[1]
-	return log, nil
-}
-
 // LastLog returns the message that was last logged in the history.
 func (vs *Store) LastLog() (LogEntry, error) {
-	logs, err := vs.store.ZRange(vs.opts.HistorySortedSet, -1, -1).Result()
-	if err != nil {
-		return LogEntry{}, err
+	var (
+		err  error
+		log  LogEntry
+		logs []string
+	)
+	if logs, err = vs.store.ZRange(vs.opts.HistorySortedSet, -1, -1).Result(); err != nil {
+		return log, err
 	}
-	return unmarshalLogEntry(logs[0])
+	err = log.Unmarshal(logs[0])
+	return log, err
 }
 
 // CountLog returns the number of log entries.
@@ -451,10 +386,10 @@ func (vs *Store) QueryTo(w io.Writer, q Query) error {
 			if strVeh, ok = iface.(string); !ok {
 				continue
 			}
-			if veh, err = unserializeVehicle(strVeh); err != nil {
+			if err = veh.Unmarshal(strVeh); err != nil {
 				return err
 			}
-			// @TODO: We unserialize the vehicle before checking if
+			// @TODO: We unmarshal the vehicle before checking if
 			// it satisfies the query, which is probably
 			// a bit expensive. Alternatives?
 			if !pq.validates(veh) {

@@ -1,6 +1,7 @@
 package vehicle
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -103,6 +104,20 @@ type Vehicle struct {
 	FuelType     string
 	Variant      string
 	FirstRegDate time.Time
+}
+
+// Marshal converts the given Vehicle to a string using JSON encoding.
+func (v *Vehicle) Marshal() (string, error) {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
+}
+
+// Unmarshal converts the given string to a Vehicle using JSON decoding.
+func (v *Vehicle) Unmarshal(str string) error {
+	return json.Unmarshal([]byte(str), v)
 }
 
 var regCountryMap = map[string]RegCountry{
