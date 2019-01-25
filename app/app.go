@@ -60,7 +60,7 @@ func loadConfig(fname string) (config.Config, error) {
 
 // bootstrap loads the app configuration and connects to the vehicle store.
 func bootstrap(cmd flags.Commander, args []string) error {
-	// Do not bootstrap the usual stuff when we are not dealing with a connected command.
+	// Do not bootstrap the usual stuff when we are not dealing with a connected command. Instead, return early.
 	if t, ok := cmd.(connecter); ok && !t.IsConnected() {
 		return cmd.Execute(args)
 	}

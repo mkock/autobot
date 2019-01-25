@@ -11,6 +11,9 @@ import (
 	"github.com/mkock/autobot/config"
 )
 
+// TmpFileLoc contains the temporary location of the ZIP file before unzipping.
+const TmpFileLoc = "/tmp/vehicledata.zip"
+
 // Constants for picking DataProvider implementations.
 const (
 	FtpProv = iota
@@ -46,8 +49,8 @@ func NewProvider(ptype int, config config.ProviderConfig) DataProvider {
 		return NewFileProvider()
 	default:
 		log.Fatalf("No such provider: %d (%s)", ptype, ProvTypeString(ptype))
+		return nil
 	}
-	return nil
 }
 
 // isZipped checks if the given file name has the ".zip" extension.
@@ -58,8 +61,7 @@ func isZipped(fname string) bool {
 // unzip extracts the source ReadCloser by writing to a zip file, and then extracting it into a new io.ReadCloser.
 func unzip(src io.ReadCloser) (io.ReadCloser, error) {
 	// Write the zip file to a temporary file on disk.
-	tmp := "/tmp/vehicledata.zip"
-	file, err := os.Create(tmp)
+	file, err := os.Create(TmpFileLoc)
 	if err != nil {
 		return nil, err
 	}
@@ -71,17 +73,13 @@ func unzip(src io.ReadCloser) (io.ReadCloser, error) {
 		return nil, err
 	}
 	// Open the temporary file and extract the first zipped file.
-	r, err := zip.OpenReader(tmp)
+	r, err := zip.OpenReader(TmpFileLoc)
 	if err != nil {
 		return nil, err
 	}
 	if len(r.File) == 0 {
-		return nil, fmt.Errorf("unzip %s: empty zip file", tmp)
+		return nil, fmt.Errorf("unzip %s: empty zip file", TmpFileLoc)
 	}
 	f := r.File[0] // Assuming that the zip file contains only a single file.
-	rc, err := f.Open()
-	if err != nil {
-		return nil, err
-	}
-	return rc, nil
+	return f.Open()
 }

@@ -136,11 +136,7 @@ func RegCountryFromString(reg string) RegCountry {
 
 // GenHash generates a unique hash value of the vehicle. The hash is stored in the vehicle metadata.
 func (v *Vehicle) GenHash() error {
-	hash, err := hashstructure.Hash(v, nil)
-	if err != nil {
-		return fmt.Errorf("unable to hash Vehicle with Ident: %d", v.MetaData.Ident)
-	}
-	v.MetaData.Hash = hash
+	v.MetaData.Hash, _ = hashstructure.Hash(v, nil) // hashstructure.Hash() does not cause errors.
 	return nil
 }
 

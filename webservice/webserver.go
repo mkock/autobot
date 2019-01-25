@@ -3,6 +3,7 @@ package webservice
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -63,12 +64,39 @@ func (srv *WebServer) JSONError(w http.ResponseWriter, handlerErr APIError) {
 	fmt.Fprint(w, string(d))
 }
 
+// logRequest prints the HTTP method and URL to stdout.
+func (srv *WebServer) logRequest(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		fmt.Printf("%s %s\n", r.Method, r.RequestURI)
+		next(w, r)
+	}
+}
+
+type statusLogger struct {
+	http.ResponseWriter
+	status int
+}
+
+func (slog *statusLogger) WriteHeader(status int) {
+	slog.status = status
+	slog.ResponseWriter.WriteHeader(status)
+}
+
+// logResponse prints the HTTP method and URL to stdout, among with the status code and type.
+func (srv *WebServer) logResponse(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		logWriter := statusLogger{w, 200}
+		next(&logWriter, r)
+		log.Printf("%s %s: %v %s\n", r.Method, r.RequestURI, logWriter.status, http.StatusText(logWriter.status))
+	}
+}
+
 // setupMux registers all the endpoints that the web server makes available.
 func (srv *WebServer) setupMux() {
-	http.HandleFunc("/", srv.handleStatus)                         // GET.
-	http.HandleFunc("/vehiclestore/status", srv.handleStoreStatus) // GET.
-	http.HandleFunc("/lookup", srv.handleLookup)                   // GET.
-	http.HandleFunc("/vehicle", srv.handleVehicle)                 // PATCH.
+	http.HandleFunc("/", srv.logResponse(srv.handleStatus))                         // GET.
+	http.HandleFunc("/vehiclestore/status", srv.logResponse(srv.handleStoreStatus)) // GET.
+	http.HandleFunc("/lookup", srv.logResponse(srv.handleLookup))                   // GET.
+	http.HandleFunc("/vehicle", srv.logResponse(srv.handleVehicle))                 // PATCH.
 }
 
 // Serve starts the web server. It never returns unless interrupted.
