@@ -71,10 +71,10 @@ func (sched *SyncScheduler) repeatSync(stop <-chan bool) {
 		select {
 		case <-stop:
 			return
-		case _ = <-time.After(dur):
+		case <-time.After(dur):
 			// The call to doSync is synchronous so we don't risk starting several sync jobs on top of each other.
 			if err := sched.doSync(); err != nil {
-				sched.logger.Printf("Sync error: %s, will retry later", err)
+				sched.logger.Printf("Sync error: %s, will retry later\n", err)
 			}
 		}
 	}
@@ -97,7 +97,7 @@ func (sched *SyncScheduler) doSync() error {
 		return err
 	}
 	if latest == "" || latest == fname {
-		sched.logger.Print("Sync: No new stat file detected")
+		sched.logger.Println("Sync: No new stat file detected")
 		return nil
 	}
 	sched.logger.Printf("Sync: synchronising %s from DMR...\n", latest)
@@ -118,8 +118,5 @@ func (sched *SyncScheduler) doSync() error {
 	}
 	sched.logger.Println(sched.store.Status(id))
 
-	if err = sched.store.SetLastSynced(latest); err != nil {
-		return err
-	}
-	return nil
+	return sched.store.SetLastSynced(latest)
 }

@@ -50,6 +50,5 @@ func (pq preparedQuery) validates(v Vehicle) bool {
 }
 
 func prepareQuery(q Query) preparedQuery {
-	pq := preparedQuery{limit: q.Limit, vehicleType: TypeFromString(q.Type), byType: q.Type != "", brand: q.Brand, model: q.Model, fuelType: q.FuelType}
-	return pq
+	return preparedQuery{limit: q.Limit, vehicleType: TypeFromString(q.Type), byType: q.Type != "", brand: q.Brand, model: q.Model, fuelType: q.FuelType}
 }

@@ -12,8 +12,7 @@ import (
 )
 
 // Service represents DMR (Danish Motor Registry).
-type Service struct {
-}
+type Service struct{}
 
 // NewService returns a service that can parse DMR data.
 func NewService() *Service {
@@ -34,7 +33,7 @@ func (service *Service) processFile(rc io.ReadCloser, numWorkers int, vehicles c
 
 	// Preparations for the main loop.
 	scanner := bufio.NewScanner(rc)
-	excerpt := []string{}
+	excerpt := make([]string, 0, 200) // Most snippets should fit inside 200 lines.
 	grab := false
 	defer func() {
 		close(lines)
